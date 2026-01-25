@@ -4,7 +4,6 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var usageManager: MultiProviderUsageManager
     @State private var selectedProviderId: String?
-    @State private var showingProviderConfig: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -22,10 +21,18 @@ struct SettingsView: View {
                             AppSettings.shared.setProviderEnabled(provider.id, enabled: enabled)
                         },
                         onConfigure: {
-                            selectedProviderId = provider.id
-                            showingProviderConfig = true
+                            if selectedProviderId == provider.id {
+                                selectedProviderId = nil
+                            } else {
+                                selectedProviderId = provider.id
+                            }
                         }
                     )
+
+                    // Inline config when selected
+                    if selectedProviderId == provider.id {
+                        ProviderConfigInline(provider: provider, usageManager: usageManager)
+                    }
                 }
             }
 
@@ -130,12 +137,6 @@ struct SettingsView: View {
         .padding(8)
         .background(Color.secondary.opacity(0.1))
         .cornerRadius(6)
-        .sheet(isPresented: $showingProviderConfig) {
-            if let providerId = selectedProviderId,
-               let provider = usageManager.provider(for: providerId) {
-                ProviderConfigSheet(provider: provider, usageManager: usageManager)
-            }
-        }
     }
 }
 
@@ -244,8 +245,10 @@ struct ProviderConfigSheet: View {
                     Text(instruction)
                         .font(.caption2)
                         .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             // Credential input
             VStack(alignment: .leading, spacing: 8) {
@@ -313,7 +316,7 @@ struct ProviderConfigSheet: View {
             }
         }
         .padding()
-        .frame(width: 400, height: 450)
+        .frame(width: 420, height: 480)
         .onAppear {
             loadExistingCredentials()
         }
@@ -367,5 +370,125 @@ struct ProviderConfigSheet: View {
         provider.clearCredentials()
         cookieInput = ""
         apiKeyInput = ""
+    }
+}
+
+/// Inline configuration view for a provider (used within the settings panel)
+struct ProviderConfigInline: View {
+    let provider: UsageProvider
+    @ObservedObject var usageManager: MultiProviderUsageManager
+
+    @State private var tokenInput: String = ""
+    @State private var isConfiguring: Bool = false
+    @State private var statusMessage: String?
+    @State private var isError: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Instructions
+            VStack(alignment: .leading, spacing: 2) {
+                Text("How to get token:")
+                    .font(.caption2)
+                    .fontWeight(.semibold)
+
+                ForEach(provider.credentialInstructions, id: \.self) { instruction in
+                    Text(instruction)
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            // Token input - use TextEditor for paste support
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Bearer Token:")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+
+                TextEditor(text: $tokenInput)
+                    .font(.system(size: 10, design: .monospaced))
+                    .frame(height: 50)
+                    .border(Color.secondary.opacity(0.3), width: 1)
+            }
+
+            // Status message
+            if let message = statusMessage {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundColor(isError ? .red : .green)
+            }
+
+            // Actions
+            HStack(spacing: 8) {
+                Button("Save & Test") {
+                    NSLog("ProviderConfigInline: Save button clicked, token length: \(tokenInput.count)")
+                    saveCredentials()
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(isConfiguring || tokenInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                if provider.isAuthenticated {
+                    Button("Clear") {
+                        provider.clearCredentials()
+                        tokenInput = ""
+                        statusMessage = "Credentials cleared"
+                        isError = false
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
+
+                if isConfiguring {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                    Text("Testing...")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .padding(8)
+        .background(Color.blue.opacity(0.1))
+        .cornerRadius(6)
+    }
+
+    private func saveCredentials() {
+        let token = tokenInput.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !token.isEmpty else {
+            statusMessage = "Token is empty"
+            isError = true
+            return
+        }
+
+        NSLog("ProviderConfigInline: Saving token for \(provider.id), length: \(token.count)")
+
+        isConfiguring = true
+        statusMessage = nil
+        isError = false
+
+        let credentials = ProviderCredentials(providerId: provider.id, bearerToken: token)
+
+        Task {
+            do {
+                NSLog("ProviderConfigInline: Calling provider.configure...")
+                try await provider.configure(credentials: credentials)
+                NSLog("ProviderConfigInline: Configure succeeded!")
+                await MainActor.run {
+                    isConfiguring = false
+                    statusMessage = "Connected successfully!"
+                    isError = false
+                    usageManager.fetchUsage()
+                }
+            } catch {
+                NSLog("ProviderConfigInline: Configure failed: \(error)")
+                await MainActor.run {
+                    isConfiguring = false
+                    statusMessage = error.localizedDescription
+                    isError = true
+                }
+            }
+        }
     }
 }

@@ -26,12 +26,11 @@ class ZaiProvider: UsageProvider {
     var credentialInstructions: [String] {
         [
             "1. Go to z.ai and sign in",
-            "2. Open DevTools (F12 or Cmd+Option+I)",
-            "3. Go to Network tab",
-            "4. Navigate to Subscription > Usage page",
-            "5. Find any API request (e.g., \"limit\")",
-            "6. In Request Headers, find \"authorization\"",
-            "7. Copy the value after \"Bearer \" (the JWT token)"
+            "2. Open DevTools (Cmd+Option+I)",
+            "3. Go to Network tab, then reload the page",
+            "4. Click any request, go to Headers tab",
+            "5. Find \"authorization: Bearer eyJ...\"",
+            "6. Copy only the token (after \"Bearer \")"
         ]
     }
 

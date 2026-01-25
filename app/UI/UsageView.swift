@@ -10,20 +10,21 @@ struct MultiProviderUsageView: View {
     @State private var showingProviderCards: Bool = true
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Header
-            HStack {
-                Text("AI Usage")
-                    .font(.headline)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Header
+                HStack {
+                    Text("AI Usage")
+                        .font(.headline)
 
-                Spacer()
+                    Spacer()
 
-                if usageManager.isLoading {
-                    ProgressView()
-                        .scaleEffect(0.7)
+                    if usageManager.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
                 }
-            }
-            .padding(.bottom, 4)
+                .padding(.bottom, 4)
 
             // Error message
             if let error = usageManager.errorMessage {
@@ -140,8 +141,9 @@ struct MultiProviderUsageView: View {
                 SettingsView(usageManager: usageManager)
             }
         }
+        }
         .padding()
-        .frame(width: 380)
+        .frame(width: 380, height: 460)
         .onAppear {
             if let savedCookie = UserDefaults.standard.string(forKey: "claude_session_cookie") {
                 sessionCookieInput = String(savedCookie.prefix(20)) + "..."
