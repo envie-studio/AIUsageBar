@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build script for ClaudeUsageBar
+# Build script for ClaudeUsageBar (Multi-Provider Version)
 
 echo "Building ClaudeUsageBar..."
 
@@ -31,23 +31,67 @@ if [ -f "ClaudeUsageBar.icns" ]; then
     /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile ClaudeUsageBar" "$APP_PATH/Contents/Info.plist"
 fi
 
+# Define all Swift source files (order matters for dependencies)
+SWIFT_FILES=(
+    "Models/UsageData.swift"
+    "Models/Settings.swift"
+    "Core/Providers/UsageProvider.swift"
+    "Core/CredentialManager.swift"
+    "Core/Providers/ClaudeWebProvider.swift"
+    "Core/Providers/OpenAIProvider.swift"
+    "Core/Providers/ZhipuProvider.swift"
+    "Core/UsageManager.swift"
+    "UI/ProviderCardView.swift"
+    "UI/SettingsView.swift"
+    "UI/UsageView.swift"
+    "ClaudeUsageBar.swift"
+)
+
+# Build the file list
+FILE_LIST=""
+for file in "${SWIFT_FILES[@]}"; do
+    FILE_LIST="$FILE_LIST $file"
+done
+
+echo "Compiling Swift files..."
+echo "Files: ${SWIFT_FILES[@]}"
+
 # Compile the Swift app for arm64
+echo "Building for arm64..."
 swiftc -parse-as-library -o "$APP_PATH/Contents/MacOS/ClaudeUsageBar_arm64" \
-    ClaudeUsageBar.swift \
+    $FILE_LIST \
     -framework SwiftUI \
     -framework AppKit \
     -framework WebKit \
-    -target arm64-apple-macos12.0
+    -framework Security \
+    -framework Carbon \
+    -target arm64-apple-macos12.0 \
+    -Xlinker -rpath -Xlinker @executable_path/../Frameworks
+
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to build for arm64"
+    exit 1
+fi
 
 # Compile for x86_64 (Intel)
+echo "Building for x86_64..."
 swiftc -parse-as-library -o "$APP_PATH/Contents/MacOS/ClaudeUsageBar_x86_64" \
-    ClaudeUsageBar.swift \
+    $FILE_LIST \
     -framework SwiftUI \
     -framework AppKit \
     -framework WebKit \
-    -target x86_64-apple-macos12.0
+    -framework Security \
+    -framework Carbon \
+    -target x86_64-apple-macos12.0 \
+    -Xlinker -rpath -Xlinker @executable_path/../Frameworks
+
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to build for x86_64"
+    exit 1
+fi
 
 # Create universal binary
+echo "Creating universal binary..."
 lipo -create -output "$APP_PATH/Contents/MacOS/ClaudeUsageBar" \
     "$APP_PATH/Contents/MacOS/ClaudeUsageBar_arm64" \
     "$APP_PATH/Contents/MacOS/ClaudeUsageBar_x86_64"
@@ -74,7 +118,7 @@ else
     codesign --force --deep --sign - "$APP_PATH"
 fi
 
-echo "Build successful!"
+echo "✅ Build successful!"
 echo "App bundle created at: $APP_PATH"
 echo "Launching app..."
 open "$APP_PATH"
