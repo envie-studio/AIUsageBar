@@ -140,4 +140,10 @@ struct ProviderDisplayConfig {
         iconName: "sparkle",
         shortName: "GLM"
     )
+
+    static let zai = ProviderDisplayConfig(
+        primaryColor: "#6366F1",  // Indigo/purple for Z.ai branding
+        iconName: "bolt.fill",
+        shortName: "Z.ai"
+    )
 }

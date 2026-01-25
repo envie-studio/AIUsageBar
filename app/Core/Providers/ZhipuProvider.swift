@@ -1,15 +1,14 @@
 import Foundation
 import Combine
 
-/// Provider for Z.ai/Zhipu GLM Coding Plan usage tracking
-/// Note: This requires reverse engineering the Z.ai dashboard
-/// or examining the glm-plan-usage plugin source
-class ZhipuWebProvider: UsageProvider {
+/// Provider for Z.ai (GLM Coding) usage tracking
+/// Uses Bearer token authentication from the Z.ai dashboard
+class ZaiProvider: UsageProvider {
     // MARK: - UsageProvider Protocol
 
-    let id = "zhipu"
-    let name = "Zhipu GLM"
-    let authMethod: AuthMethod = .cookie
+    let id = "zhipu"  // Keep ID for backwards compatibility with stored credentials
+    let name = "Z.ai"
+    let authMethod: AuthMethod = .bearerToken
 
     @Published private(set) var authState: AuthState = .notConfigured
     @Published private(set) var latestUsage: UsageSnapshot?
@@ -22,35 +21,27 @@ class ZhipuWebProvider: UsageProvider {
         $authState.eraseToAnyPublisher()
     }
 
-    let displayConfig = ProviderDisplayConfig.zhipu
+    let displayConfig = ProviderDisplayConfig.zai
 
     var credentialInstructions: [String] {
         [
-            "1. Go to z.ai or open.bigmodel.cn dashboard",
-            "2. Sign in with your account",
-            "3. Press F12 (or Cmd+Option+I)",
-            "4. Go to Network tab",
-            "5. Navigate to usage/billing section",
-            "6. Look for API requests",
-            "7. Find 'Cookie' in Request Headers",
-            "8. Copy full cookie value"
+            "1. Go to z.ai and sign in",
+            "2. Open DevTools (F12 or Cmd+Option+I)",
+            "3. Go to Network tab",
+            "4. Navigate to Subscription > Usage page",
+            "5. Find any API request (e.g., \"limit\")",
+            "6. In Request Headers, find \"authorization\"",
+            "7. Copy the value after \"Bearer \" (the JWT token)"
         ]
     }
 
     // MARK: - Private Properties
 
-    private var sessionCookie: String = ""
+    private var bearerToken: String = ""
     private let credentialManager = CredentialManager.shared
 
-    // Known endpoints (need verification):
-    // - api.z.ai/api/anthropic (Claude Code via Z.ai)
-    // - api.z.ai/api/coding/paas/v4
-    // - open.bigmodel.cn/api/* (main BigModel API)
-
-    // Quota information:
-    // - Lite: ~120 prompts/5hr
-    // - Pro: ~600 prompts/5hr
-    // - Max: ~2400 prompts/5hr
+    // API endpoint for quota usage
+    private let usageEndpoint = "https://api.z.ai/api/monitor/usage/quota/limit"
 
     // MARK: - Initialization
 
@@ -61,11 +52,11 @@ class ZhipuWebProvider: UsageProvider {
     // MARK: - Public Methods
 
     func configure(credentials: ProviderCredentials) async throws {
-        guard let cookie = credentials.cookie, !cookie.isEmpty else {
+        guard let token = credentials.bearerToken, !token.isEmpty else {
             throw ProviderError.invalidCredentials
         }
 
-        sessionCookie = cookie
+        bearerToken = token
 
         // Save to keychain
         try credentialManager.save(credentials)
@@ -73,10 +64,10 @@ class ZhipuWebProvider: UsageProvider {
         authState = .validating
 
         do {
-            // Try to validate by fetching usage
+            // Validate by fetching usage
             _ = try await fetchUsage()
             authState = .authenticated
-            NSLog("ZhipuWebProvider: Configured successfully")
+            NSLog("ZaiProvider: Configured successfully")
         } catch {
             authState = .failed(error.localizedDescription)
             throw error
@@ -84,47 +75,40 @@ class ZhipuWebProvider: UsageProvider {
     }
 
     func fetchUsage() async throws -> UsageSnapshot {
-        guard !sessionCookie.isEmpty else {
+        guard !bearerToken.isEmpty else {
             throw ProviderError.notConfigured
         }
 
-        // TODO: Discover actual endpoint from Z.ai dashboard
-        // Try multiple potential endpoints
-
-        var quotas: [QuotaMetric] = []
-
-        // Try Z.ai API
-        if let zaiQuotas = try? await fetchZaiUsage() {
-            quotas.append(contentsOf: zaiQuotas)
+        guard let url = URL(string: usageEndpoint) else {
+            throw ProviderError.unknown("Invalid URL")
         }
 
-        // Try BigModel API
-        if quotas.isEmpty, let bigmodelQuotas = try? await fetchBigModelUsage() {
-            quotas.append(contentsOf: bigmodelQuotas)
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
+
+        NSLog("ZaiProvider: Fetching usage from \(usageEndpoint)")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw ProviderError.unknown("Invalid response")
         }
 
-        // If no quotas found, return placeholder
-        if quotas.isEmpty {
-            NSLog("ZhipuWebProvider: Could not fetch usage, returning placeholder")
-            quotas = [
-                QuotaMetric(
-                    id: "session",
-                    name: "Session (5 hour)",
-                    percentage: nil,
-                    used: nil,
-                    limit: nil,
-                    unit: "prompts",
-                    resetDate: nil
-                )
-            ]
+        NSLog("ZaiProvider: Status \(httpResponse.statusCode)")
+
+        if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+            authState = .failed("Token expired or invalid")
+            throw ProviderError.invalidCredentials
         }
 
-        let snapshot = UsageSnapshot(
-            providerId: id,
-            timestamp: Date(),
-            quotas: quotas
-        )
+        guard httpResponse.statusCode == 200 else {
+            throw ProviderError.serverError(httpResponse.statusCode)
+        }
 
+        let snapshot = try parseUsageData(data)
         latestUsage = snapshot
         authState = .authenticated
 
@@ -132,16 +116,16 @@ class ZhipuWebProvider: UsageProvider {
     }
 
     func clearCredentials() {
-        sessionCookie = ""
+        bearerToken = ""
         latestUsage = nil
         authState = .notConfigured
 
         try? credentialManager.delete(for: id)
-        NSLog("ZhipuWebProvider: Credentials cleared")
+        NSLog("ZaiProvider: Credentials cleared")
     }
 
     func validateCredentials() async -> Bool {
-        guard !sessionCookie.isEmpty else { return false }
+        guard !bearerToken.isEmpty else { return false }
 
         do {
             _ = try await fetchUsage()
@@ -155,154 +139,114 @@ class ZhipuWebProvider: UsageProvider {
 
     private func loadCredentials() {
         if let credentials = credentialManager.load(for: id) {
-            sessionCookie = credentials.cookie ?? ""
+            bearerToken = credentials.bearerToken ?? ""
 
-            if !sessionCookie.isEmpty {
+            if !bearerToken.isEmpty {
                 authState = .authenticated
-                NSLog("ZhipuWebProvider: Loaded credentials from Keychain")
+                NSLog("ZaiProvider: Loaded credentials from Keychain")
             }
         }
     }
 
-    private func fetchZaiUsage() async throws -> [QuotaMetric] {
-        // Try Z.ai coding plan usage endpoint
-        // TODO: Discover actual endpoint
-
-        // Potential endpoints:
-        // - api.z.ai/api/user/usage
-        // - api.z.ai/api/coding/usage
-        // - api.z.ai/api/billing/usage
-
-        guard let url = URL(string: "https://api.z.ai/api/user/usage") else {
-            throw ProviderError.unknown("Invalid Z.ai URL")
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue(sessionCookie, forHTTPHeaderField: "Cookie")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
-
-        NSLog("ZhipuWebProvider: Trying Z.ai endpoint...")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ProviderError.unknown("Invalid response")
-        }
-
-        if httpResponse.statusCode != 200 {
-            NSLog("ZhipuWebProvider: Z.ai endpoint returned \(httpResponse.statusCode)")
-            throw ProviderError.serverError(httpResponse.statusCode)
-        }
-
+    private func parseUsageData(_ data: Data) throws -> UsageSnapshot {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw ProviderError.parseError("Invalid JSON")
         }
 
-        NSLog("ZhipuWebProvider: Z.ai response: \(json)")
+        NSLog("ZaiProvider: Parsing usage data...")
 
-        // TODO: Parse actual response structure
-        // Expected similar to Claude: utilization percentage + resets_at
-
-        return parseUsageResponse(json)
-    }
-
-    private func fetchBigModelUsage() async throws -> [QuotaMetric] {
-        // Try BigModel (open.bigmodel.cn) usage endpoint
-
-        guard let url = URL(string: "https://open.bigmodel.cn/api/paas/v4/usage") else {
-            throw ProviderError.unknown("Invalid BigModel URL")
+        // Check for error response
+        if let code = json["code"] as? Int, code != 200 {
+            let message = json["message"] as? String ?? "Unknown error"
+            throw ProviderError.parseError("API error \(code): \(message)")
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue(sessionCookie, forHTTPHeaderField: "Cookie")
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36", forHTTPHeaderField: "User-Agent")
-
-        NSLog("ZhipuWebProvider: Trying BigModel endpoint...")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ProviderError.unknown("Invalid response")
+        guard let dataDict = json["data"] as? [String: Any],
+              let limits = dataDict["limits"] as? [[String: Any]] else {
+            throw ProviderError.parseError("Missing 'data.limits' in response")
         }
-
-        if httpResponse.statusCode != 200 {
-            NSLog("ZhipuWebProvider: BigModel endpoint returned \(httpResponse.statusCode)")
-            throw ProviderError.serverError(httpResponse.statusCode)
-        }
-
-        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw ProviderError.parseError("Invalid JSON")
-        }
-
-        NSLog("ZhipuWebProvider: BigModel response: \(json)")
-
-        return parseUsageResponse(json)
-    }
-
-    private func parseUsageResponse(_ json: [String: Any]) -> [QuotaMetric] {
-        // Attempt to parse a Claude-like response structure
-        let iso8601Formatter = ISO8601DateFormatter()
-        iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         var quotas: [QuotaMetric] = []
 
-        // Try to find session/5-hour quota
-        if let fiveHour = json["five_hour"] as? [String: Any] ?? json["session"] as? [String: Any] {
-            let utilization = fiveHour["utilization"] as? Double ?? fiveHour["percentage"] as? Double ?? 0
-            var resetDate: Date?
+        for limit in limits {
+            guard let type = limit["type"] as? String else { continue }
 
-            if let resetsAtString = fiveHour["resets_at"] as? String ?? fiveHour["reset_time"] as? String {
-                resetDate = iso8601Formatter.date(from: resetsAtString)
+            let usage = limit["usage"] as? Double ?? 0          // Total limit
+            let currentValue = limit["currentValue"] as? Double ?? 0  // Used
+            let percentage = limit["percentage"] as? Double ?? 0
+
+            // Parse reset time (Unix timestamp in milliseconds)
+            var resetDate: Date?
+            if let nextResetTime = limit["nextResetTime"] as? Double {
+                resetDate = Date(timeIntervalSince1970: nextResetTime / 1000.0)
             }
 
-            quotas.append(QuotaMetric(
-                id: "session",
-                name: "Session (5 hour)",
-                percentage: utilization,
-                unit: "%",
-                resetDate: resetDate
-            ))
-        }
-
-        // Try to find daily/weekly quota
-        if let daily = json["daily"] as? [String: Any] ?? json["seven_day"] as? [String: Any] {
-            let utilization = daily["utilization"] as? Double ?? daily["percentage"] as? Double ?? 0
-            var resetDate: Date?
-
-            if let resetsAtString = daily["resets_at"] as? String ?? daily["reset_time"] as? String {
-                resetDate = iso8601Formatter.date(from: resetsAtString)
-            }
-
-            quotas.append(QuotaMetric(
-                id: "daily",
-                name: "Daily/Weekly",
-                percentage: utilization,
-                unit: "%",
-                resetDate: resetDate
-            ))
-        }
-
-        // Try generic usage format
-        if quotas.isEmpty {
-            if let used = json["used"] as? Double ?? json["current"] as? Double,
-               let limit = json["limit"] as? Double ?? json["total"] as? Double {
-                let percentage = limit > 0 ? (used / limit) * 100 : 0
-
+            switch type {
+            case "TOKENS_LIMIT":
+                // Main 5-hour token quota
                 quotas.append(QuotaMetric(
-                    id: "usage",
-                    name: "Usage",
+                    id: "session",
+                    name: "Tokens (5 hour)",
                     percentage: percentage,
-                    used: used,
-                    limit: limit,
-                    unit: "prompts"
+                    used: currentValue,
+                    limit: usage,
+                    unit: "tokens",
+                    resetDate: resetDate
+                ))
+
+            case "TIME_LIMIT":
+                // Monthly web search/reader quota
+                quotas.append(QuotaMetric(
+                    id: "monthly_tools",
+                    name: "Tools (Monthly)",
+                    percentage: percentage,
+                    used: currentValue,
+                    limit: usage,
+                    unit: "uses",
+                    resetDate: resetDate
+                ))
+
+            default:
+                // Handle any other quota types generically
+                quotas.append(QuotaMetric(
+                    id: type.lowercased(),
+                    name: type.replacingOccurrences(of: "_", with: " ").capitalized,
+                    percentage: percentage,
+                    used: currentValue,
+                    limit: usage,
+                    unit: "units",
+                    resetDate: resetDate
                 ))
             }
         }
 
-        return quotas
+        // If no quotas found, return a placeholder
+        if quotas.isEmpty {
+            NSLog("ZaiProvider: No quotas found in response")
+            quotas = [
+                QuotaMetric(
+                    id: "session",
+                    name: "Tokens (5 hour)",
+                    percentage: nil,
+                    used: nil,
+                    limit: nil,
+                    unit: "tokens",
+                    resetDate: nil
+                )
+            ]
+        }
+
+        let snapshot = UsageSnapshot(
+            providerId: id,
+            timestamp: Date(),
+            quotas: quotas
+        )
+
+        NSLog("ZaiProvider: Parsed \(quotas.count) quotas")
+
+        return snapshot
     }
 }
+
+// MARK: - Legacy Type Alias
+typealias ZhipuWebProvider = ZaiProvider
