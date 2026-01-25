@@ -3,65 +3,73 @@ import SwiftUI
 /// Settings view for configuring providers and app preferences
 struct SettingsView: View {
     @ObservedObject var usageManager: MultiProviderUsageManager
-    @State private var selectedProviderId: String?
+    @State private var expandedProviderId: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Provider Configuration
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Providers")
-                    .font(.caption)
-                    .fontWeight(.semibold)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Providers")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                    Spacer()
+                    Text("Click to configure")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
 
                 ForEach(Array(usageManager.providers.values), id: \.id) { provider in
-                    ProviderToggleRow(
+                    ProviderSettingsCard(
                         provider: provider,
+                        isExpanded: expandedProviderId == provider.id,
                         isEnabled: AppSettings.shared.isProviderEnabled(provider.id),
-                        onToggle: { enabled in
+                        onToggleExpand: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if expandedProviderId == provider.id {
+                                    expandedProviderId = nil
+                                } else {
+                                    expandedProviderId = provider.id
+                                }
+                            }
+                        },
+                        onToggleEnabled: { enabled in
                             AppSettings.shared.setProviderEnabled(provider.id, enabled: enabled)
                         },
-                        onConfigure: {
-                            if selectedProviderId == provider.id {
-                                selectedProviderId = nil
-                            } else {
-                                selectedProviderId = provider.id
-                            }
-                        }
+                        usageManager: usageManager
                     )
-
-                    // Inline config when selected
-                    if selectedProviderId == provider.id {
-                        ProviderConfigInline(provider: provider, usageManager: usageManager)
-                    }
                 }
             }
 
             Divider()
 
-            // Primary Provider Selection
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Menu Bar Provider")
-                    .font(.caption)
-                    .fontWeight(.semibold)
+            // Primary Provider Selection (only show if multiple providers are connected)
+            let connectedProviders = usageManager.providers.values.filter { $0.isAuthenticated }
+            if connectedProviders.count > 1 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Menu Bar Display")
+                        .font(.caption)
+                        .fontWeight(.semibold)
 
-                Picker("", selection: Binding(
-                    get: { AppSettings.shared.primaryProviderId ?? "claude" },
-                    set: { AppSettings.shared.primaryProviderId = $0 }
-                )) {
-                    ForEach(Array(usageManager.providers.values), id: \.id) { provider in
-                        Text(provider.displayConfig.shortName)
-                            .tag(provider.id)
+                    Picker("", selection: Binding(
+                        get: { AppSettings.shared.primaryProviderId ?? "claude" },
+                        set: { AppSettings.shared.primaryProviderId = $0 }
+                    )) {
+                        ForEach(Array(connectedProviders), id: \.id) { provider in
+                            Text(provider.displayConfig.shortName)
+                                .tag(provider.id)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+
+                    Text("Which provider to show in the menu bar")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
 
-                Text("Shown in menu bar")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
+                Divider()
             }
-
-            Divider()
 
             // General Settings
             VStack(alignment: .leading, spacing: 8) {
@@ -140,42 +148,110 @@ struct SettingsView: View {
     }
 }
 
-/// Row for toggling a provider on/off
-struct ProviderToggleRow: View {
+/// Card-based provider settings with clear status and actions
+struct ProviderSettingsCard: View {
     let provider: UsageProvider
+    let isExpanded: Bool
     let isEnabled: Bool
-    let onToggle: (Bool) -> Void
-    let onConfigure: () -> Void
+    let onToggleExpand: () -> Void
+    let onToggleEnabled: (Bool) -> Void
+    @ObservedObject var usageManager: MultiProviderUsageManager
+
+    private var statusConfig: (color: Color, icon: String, label: String, needsSetup: Bool) {
+        switch provider.authState {
+        case .notConfigured:
+            return (.orange, "exclamationmark.circle.fill", "Needs setup", true)
+        case .validating:
+            return (.blue, "arrow.trianglehead.2.clockwise", "Checking...", false)
+        case .authenticated:
+            return (.green, "checkmark.circle.fill", "Connected", false)
+        case .failed(let message):
+            let shortMessage = message.count > 15 ? "Connection failed" : message
+            return (.red, "xmark.circle.fill", shortMessage, true)
+        }
+    }
 
     var body: some View {
-        HStack {
-            // Status indicator
-            Circle()
-                .fill(provider.isAuthenticated ? Color.green : Color.gray)
-                .frame(width: 8, height: 8)
+        VStack(spacing: 0) {
+            // Main row - always visible
+            Button(action: onToggleExpand) {
+                HStack(spacing: 10) {
+                    // Provider icon with brand color
+                    Image(systemName: provider.displayConfig.iconName)
+                        .font(.system(size: 14))
+                        .foregroundColor(Color(hex: provider.displayConfig.primaryColor))
+                        .frame(width: 20)
 
-            // Provider name
-            Text(provider.name)
-                .font(.caption)
+                    // Provider name
+                    Text(provider.name)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
 
-            Spacer()
+                    Spacer()
 
-            // Configure button
-            Button(action: onConfigure) {
-                Image(systemName: "gearshape")
-                    .font(.caption)
+                    // Status badge
+                    HStack(spacing: 4) {
+                        Image(systemName: statusConfig.icon)
+                            .font(.system(size: 10))
+                        Text(statusConfig.label)
+                            .font(.caption2)
+                    }
+                    .foregroundColor(statusConfig.color)
+
+                    // Expand indicator
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
 
-            // Enable toggle
-            Toggle("", isOn: Binding(
-                get: { isEnabled },
-                set: { onToggle($0) }
-            ))
-            .toggleStyle(.checkbox)
-            .labelsHidden()
+            // Expanded configuration section
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    Divider()
+                        .padding(.horizontal, 10)
+
+                    // Show enable toggle only when configured
+                    if provider.isAuthenticated {
+                        HStack {
+                            Toggle(isOn: Binding(
+                                get: { isEnabled },
+                                set: { onToggleEnabled($0) }
+                            )) {
+                                Text("Show in dashboard")
+                                    .font(.caption)
+                            }
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.bottom, 4)
+                    }
+
+                    // Inline configuration
+                    ProviderConfigInline(provider: provider, usageManager: usageManager)
+                        .id("config-\(provider.id)")  // Force recreation when expanded
+                        .padding(.horizontal, 6)
+                        .padding(.bottom, 6)
+                }
+            }
         }
-        .padding(.vertical, 2)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.secondary.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(
+                    isExpanded ? Color(hex: provider.displayConfig.primaryColor).opacity(0.3) : Color.clear,
+                    lineWidth: 1
+                )
+        )
     }
 }
 
@@ -378,111 +454,309 @@ struct ProviderConfigInline: View {
     let provider: UsageProvider
     @ObservedObject var usageManager: MultiProviderUsageManager
 
-    @State private var tokenInput: String = ""
+    @State private var credentialInput: String = ""
     @State private var isConfiguring: Bool = false
     @State private var statusMessage: String?
     @State private var isError: Bool = false
+    @State private var hasExistingCredentials: Bool = false
+
+    private var inputLabel: String {
+        switch provider.authMethod {
+        case .cookie:
+            return "Session Cookie:"
+        case .apiKey:
+            return "API Key:"
+        case .bearerToken:
+            return "Bearer Token:"
+        case .none:
+            return ""
+        }
+    }
+
+    private var inputPlaceholder: String {
+        switch provider.authMethod {
+        case .cookie:
+            return "Paste full cookie string here..."
+        case .apiKey:
+            return "sk-..."
+        case .bearerToken:
+            return "Paste token here..."
+        case .none:
+            return ""
+        }
+    }
+
+    private var instructionsTitle: String {
+        switch provider.authMethod {
+        case .cookie:
+            return "How to get your session cookie:"
+        case .apiKey:
+            return "How to get your API key:"
+        case .bearerToken:
+            return "How to get your token:"
+        case .none:
+            return ""
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Instructions
-            VStack(alignment: .leading, spacing: 2) {
-                Text("How to get token:")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
-
-                ForEach(provider.credentialInstructions, id: \.self) { instruction in
-                    Text(instruction)
-                        .font(.system(size: 10))
+            // Handle no-auth case
+            if provider.authMethod == .none {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.caption)
+                    Text("No configuration needed")
+                        .font(.caption)
                         .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
-            }
+            } else {
+                // Instructions with better formatting
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Text(instructionsTitle)
+                            .font(.caption2)
+                            .fontWeight(.semibold)
 
-            // Token input - use TextEditor for paste support
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Bearer Token:")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-
-                TextEditor(text: $tokenInput)
-                    .font(.system(size: 10, design: .monospaced))
-                    .frame(height: 50)
-                    .border(Color.secondary.opacity(0.3), width: 1)
-            }
-
-            // Status message
-            if let message = statusMessage {
-                Text(message)
-                    .font(.caption2)
-                    .foregroundColor(isError ? .red : .green)
-            }
-
-            // Actions
-            HStack(spacing: 8) {
-                Button("Save & Test") {
-                    NSLog("ProviderConfigInline: Save button clicked, token length: \(tokenInput.count)")
-                    saveCredentials()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-                .disabled(isConfiguring || tokenInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-
-                if provider.isAuthenticated {
-                    Button("Clear") {
-                        provider.clearCredentials()
-                        tokenInput = ""
-                        statusMessage = "Credentials cleared"
-                        isError = false
+                        // DevTools hint
+                        if provider.authMethod == .cookie || provider.authMethod == .bearerToken {
+                            Image(systemName: "wrench.and.screwdriver")
+                                .font(.system(size: 9))
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+
+                    ForEach(Array(provider.credentialInstructions.enumerated()), id: \.offset) { index, instruction in
+                        HStack(alignment: .top, spacing: 6) {
+                            Text("\(index + 1).")
+                                .font(.system(size: 10, weight: .medium, design: .monospaced))
+                                .foregroundColor(.secondary)
+                                .frame(width: 16, alignment: .trailing)
+
+                            Text(formatInstruction(instruction))
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
 
-                if isConfiguring {
-                    ProgressView()
-                        .scaleEffect(0.6)
-                    Text("Testing...")
+                // Credential input based on auth method
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(inputLabel)
                         .font(.caption2)
                         .foregroundColor(.secondary)
+
+                    switch provider.authMethod {
+                    case .cookie:
+                        // TextEditor for long cookie strings
+                        TextEditor(text: $credentialInput)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(height: 60)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                            )
+                            .overlay(
+                                Group {
+                                    if credentialInput.isEmpty {
+                                        Text(inputPlaceholder)
+                                            .font(.system(size: 10, design: .monospaced))
+                                            .foregroundColor(.secondary.opacity(0.5))
+                                            .padding(.leading, 4)
+                                            .padding(.top, 8)
+                                    }
+                                },
+                                alignment: .topLeading
+                            )
+
+                    case .apiKey:
+                        // SecureField for API keys
+                        SecureField(inputPlaceholder, text: $credentialInput)
+                            .font(.system(size: 11, design: .monospaced))
+                            .textFieldStyle(.roundedBorder)
+
+                    case .bearerToken:
+                        // TextEditor for JWT/bearer tokens (often long)
+                        TextEditor(text: $credentialInput)
+                            .font(.system(size: 10, design: .monospaced))
+                            .frame(height: 50)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                            )
+                            .overlay(
+                                Group {
+                                    if credentialInput.isEmpty {
+                                        Text(inputPlaceholder)
+                                            .font(.system(size: 10, design: .monospaced))
+                                            .foregroundColor(.secondary.opacity(0.5))
+                                            .padding(.leading, 4)
+                                            .padding(.top, 8)
+                                    }
+                                },
+                                alignment: .topLeading
+                            )
+
+                    case .none:
+                        EmptyView()
+                    }
+                }
+
+                // Existing credentials hint
+                if hasExistingCredentials && statusMessage == nil {
+                    HStack(spacing: 4) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.green)
+                        Text("Credentials saved. Paste new value to update.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // Status message
+                if let message = statusMessage {
+                    Text(message)
+                        .font(.caption2)
+                        .foregroundColor(isError ? .red : .green)
+                }
+
+                // Actions
+                HStack(spacing: 8) {
+                    Button("Save & Test") {
+                        saveCredentials()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    .disabled(isConfiguring || credentialInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+
+                    if provider.isAuthenticated {
+                        Button("Clear") {
+                            provider.clearCredentials()
+                            credentialInput = ""
+                            statusMessage = "Credentials cleared"
+                            isError = false
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+
+                    if isConfiguring {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                        Text("Testing...")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
         }
         .padding(8)
-        .background(Color.blue.opacity(0.1))
+        .background(Color(hex: provider.displayConfig.primaryColor).opacity(0.08))
         .cornerRadius(6)
+        .task {
+            loadExistingCredentials()
+        }
+    }
+
+    /// Load existing credentials and show masked preview
+    private func loadExistingCredentials() {
+        // Only load if input is empty and we haven't already loaded
+        guard credentialInput.isEmpty && !hasExistingCredentials else { return }
+
+        NSLog("ProviderConfigInline: Loading credentials for \(provider.id)")
+
+        if let credentials = CredentialManager.shared.load(for: provider.id) {
+            NSLog("ProviderConfigInline: Found credentials for \(provider.id)")
+            switch provider.authMethod {
+            case .cookie:
+                if let cookie = credentials.cookie, !cookie.isEmpty {
+                    hasExistingCredentials = true
+                    // Show truncated preview
+                    let preview = String(cookie.prefix(30))
+                    credentialInput = preview + "..."
+                }
+            case .apiKey:
+                if let apiKey = credentials.apiKey, !apiKey.isEmpty {
+                    hasExistingCredentials = true
+                    // Show masked version
+                    credentialInput = String(repeating: "•", count: min(apiKey.count, 20))
+                }
+            case .bearerToken:
+                if let token = credentials.bearerToken, !token.isEmpty {
+                    hasExistingCredentials = true
+                    // Show truncated preview for JWT tokens
+                    let preview = String(token.prefix(20))
+                    credentialInput = preview + "..."
+                }
+            case .none:
+                break
+            }
+        } else {
+            NSLog("ProviderConfigInline: No credentials found for \(provider.id)")
+        }
+    }
+
+    /// Format instruction text to highlight technical terms
+    private func formatInstruction(_ text: String) -> AttributedString {
+        var result = AttributedString(text)
+        // Highlight technical terms in monospace
+        let technicalTerms = ["Cookie", "Bearer", "Network", "Headers", "Request Headers", "F12", "DevTools", "API"]
+        for term in technicalTerms {
+            if let range = result.range(of: term, options: .caseInsensitive) {
+                result[range].font = .system(size: 10, design: .monospaced)
+            }
+        }
+        return result
     }
 
     private func saveCredentials() {
-        let token = tokenInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = credentialInput.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !token.isEmpty else {
-            statusMessage = "Token is empty"
+        guard !value.isEmpty else {
+            statusMessage = "Input is empty"
             isError = true
             return
         }
 
-        NSLog("ProviderConfigInline: Saving token for \(provider.id), length: \(token.count)")
+        // Check if user is trying to save the preview/masked value
+        if value.hasSuffix("...") || value.contains("•") {
+            statusMessage = "Please paste the full credential value"
+            isError = true
+            return
+        }
 
         isConfiguring = true
         statusMessage = nil
         isError = false
+        hasExistingCredentials = false
 
-        let credentials = ProviderCredentials(providerId: provider.id, bearerToken: token)
+        // Build credentials based on auth method
+        var credentials = ProviderCredentials(providerId: provider.id)
+        switch provider.authMethod {
+        case .cookie:
+            credentials = ProviderCredentials(providerId: provider.id, cookie: value)
+        case .apiKey:
+            credentials = ProviderCredentials(providerId: provider.id, apiKey: value)
+        case .bearerToken:
+            credentials = ProviderCredentials(providerId: provider.id, bearerToken: value)
+        case .none:
+            break
+        }
 
         Task {
             do {
-                NSLog("ProviderConfigInline: Calling provider.configure...")
                 try await provider.configure(credentials: credentials)
-                NSLog("ProviderConfigInline: Configure succeeded!")
                 await MainActor.run {
                     isConfiguring = false
                     statusMessage = "Connected successfully!"
                     isError = false
+                    hasExistingCredentials = true
                     usageManager.fetchUsage()
                 }
             } catch {
-                NSLog("ProviderConfigInline: Configure failed: \(error)")
                 await MainActor.run {
                     isConfiguring = false
                     statusMessage = error.localizedDescription

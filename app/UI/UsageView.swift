@@ -4,8 +4,6 @@ import AppKit
 /// Main usage display view with multi-provider support
 struct MultiProviderUsageView: View {
     @ObservedObject var usageManager: MultiProviderUsageManager
-    @State private var sessionCookieInput: String = ""
-    @State private var showingCookieInput: Bool = false
     @State private var showingSettings: Bool = false
     @State private var showingProviderCards: Bool = true
 
@@ -36,26 +34,91 @@ struct MultiProviderUsageView: View {
 
             // Welcome message if no data
             if !usageManager.hasFetchedData {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Welcome! Configure your AI providers below to get started.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 12) {
+                    // Welcome header
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Welcome to AI Usage Bar")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("Track your AI usage across multiple providers in one place.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
 
-                    Text("Supported providers:")
-                        .font(.caption)
-                        .fontWeight(.semibold)
+                    // Quick start guide
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Get Started")
+                            .font(.caption)
+                            .fontWeight(.semibold)
 
-                    ForEach(Array(usageManager.providers.values), id: \.id) { provider in
-                        HStack(spacing: 6) {
-                            Image(systemName: provider.displayConfig.iconName)
-                                .foregroundColor(Color(hex: provider.displayConfig.primaryColor))
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("1.")
                                 .font(.caption)
-                            Text(provider.name)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                            Text("Click **Settings** below")
                                 .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("2.")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                            Text("Click on a provider to configure it")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        HStack(alignment: .top, spacing: 8) {
+                            Text("3.")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundColor(.secondary)
+                            Text("Follow the instructions to add your credentials")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
+
+                    // Supported providers with visual cards
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Supported Providers")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+
+                        HStack(spacing: 8) {
+                            ForEach(Array(usageManager.providers.values), id: \.id) { provider in
+                                HStack(spacing: 4) {
+                                    Image(systemName: provider.displayConfig.iconName)
+                                        .font(.system(size: 10))
+                                    Text(provider.displayConfig.shortName)
+                                        .font(.caption2)
+                                }
+                                .foregroundColor(Color(hex: provider.displayConfig.primaryColor))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color(hex: provider.displayConfig.primaryColor).opacity(0.1))
+                                .cornerRadius(4)
+                            }
+                        }
+                    }
+
+                    // Recommendation
+                    HStack(spacing: 6) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption)
+                            .foregroundColor(.yellow)
+                        Text("Tip: Start with Claude if you have a Pro subscription")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(8)
+                    .background(Color.yellow.opacity(0.1))
+                    .cornerRadius(6)
                 }
-                .padding(.vertical, 8)
+                .padding(12)
+                .background(Color.secondary.opacity(0.05))
+                .cornerRadius(8)
             }
 
             // Provider cards or legacy Claude view
@@ -104,20 +167,6 @@ struct MultiProviderUsageView: View {
                 }
             }
 
-            // Quick configure Claude (legacy support)
-            Button(showingCookieInput ? "Hide Cookie" : "Set Session Cookie") {
-                showingCookieInput.toggle()
-            }
-            .buttonStyle(.borderless)
-            .font(.caption)
-
-            if showingCookieInput {
-                LegacyCookieInputView(
-                    sessionCookieInput: $sessionCookieInput,
-                    usageManager: usageManager
-                )
-            }
-
             // Support link
             Button(action: {
                 NSWorkspace.shared.open(URL(string: "https://donate.stripe.com/3cIcN5b5H7Q8ay8bIDfIs02")!)
@@ -145,9 +194,6 @@ struct MultiProviderUsageView: View {
         .padding()
         .frame(width: 380, height: 460)
         .onAppear {
-            if let savedCookie = UserDefaults.standard.string(forKey: "claude_session_cookie") {
-                sessionCookieInput = String(savedCookie.prefix(20)) + "..."
-            }
             usageManager.updatePercentages()
         }
     }
