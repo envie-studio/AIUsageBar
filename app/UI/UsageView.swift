@@ -165,7 +165,7 @@ struct MultiProviderUsageView: View {
                 NSWorkspace.shared.open(URL(string: "https://donate.stripe.com/3cIcN5b5H7Q8ay8bIDfIs02")!)
             }) {
                 HStack(spacing: 4) {
-                    Text("Buy Dev a Coffee")
+                    Text("Buy \"the original\" Dev a Coffee")
                 }
             }
             .buttonStyle(.borderless)
