@@ -5,13 +5,13 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>en</string>
     <key>CFBundleExecutable</key>
-    <string>ClaudeUsageBar</string>
+    <string>AIUsageBar</string>
     <key>CFBundleIdentifier</key>
-    <string>com.claude.usagebar</string>
+    <string>com.aiusagebar</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
-    <string>ClaudeUsageBar</string>
+    <string>AIUsageBar</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

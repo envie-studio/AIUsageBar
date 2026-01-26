@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Build script for ClaudeUsageBar (Multi-Provider Version)
+# Build script for AIUsageBar (Multi-Provider Version)
 
-echo "Building ClaudeUsageBar..."
+echo "Building AIUsageBar..."
 
 # Create build directory
 mkdir -p build
 
 # Create app bundle structure first
-APP_NAME="ClaudeUsageBar.app"
+APP_NAME="AIUsageBar.app"
 APP_PATH="build/$APP_NAME"
 
 mkdir -p "$APP_PATH/Contents/MacOS"
@@ -18,17 +18,26 @@ mkdir -p "$APP_PATH/Contents/Resources"
 cp Info.plist "$APP_PATH/Contents/"
 
 # Create icon if it doesn't exist
-if [ ! -f "ClaudeUsageBar.icns" ]; then
+if [ ! -f "AIUsageBar.icns" ]; then
     echo "Creating app icon..."
-    ./make_app_icon.sh >/dev/null 2>&1
+    # Try to copy from old name if exists
+    if [ -f "ClaudeUsageBar.icns" ]; then
+        cp ClaudeUsageBar.icns AIUsageBar.icns
+    else
+        ./make_app_icon.sh >/dev/null 2>&1
+    fi
 fi
 
 # Copy icon to Resources
-if [ -f "ClaudeUsageBar.icns" ]; then
-    cp ClaudeUsageBar.icns "$APP_PATH/Contents/Resources/"
+if [ -f "AIUsageBar.icns" ]; then
+    cp AIUsageBar.icns "$APP_PATH/Contents/Resources/"
     # Update Info.plist to reference icon
-    /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string ClaudeUsageBar" "$APP_PATH/Contents/Info.plist" 2>/dev/null || \
-    /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile ClaudeUsageBar" "$APP_PATH/Contents/Info.plist"
+    /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AIUsageBar" "$APP_PATH/Contents/Info.plist" 2>/dev/null || \
+    /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AIUsageBar" "$APP_PATH/Contents/Info.plist"
+elif [ -f "ClaudeUsageBar.icns" ]; then
+    cp ClaudeUsageBar.icns "$APP_PATH/Contents/Resources/AIUsageBar.icns"
+    /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AIUsageBar" "$APP_PATH/Contents/Info.plist" 2>/dev/null || \
+    /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AIUsageBar" "$APP_PATH/Contents/Info.plist"
 fi
 
 # Define all Swift source files (order matters for dependencies)
@@ -58,7 +67,7 @@ echo "Files: ${SWIFT_FILES[@]}"
 
 # Compile the Swift app for arm64
 echo "Building for arm64..."
-swiftc -parse-as-library -o "$APP_PATH/Contents/MacOS/ClaudeUsageBar_arm64" \
+swiftc -parse-as-library -o "$APP_PATH/Contents/MacOS/AIUsageBar_arm64" \
     $FILE_LIST \
     -framework SwiftUI \
     -framework AppKit \
@@ -75,7 +84,7 @@ fi
 
 # Compile for x86_64 (Intel)
 echo "Building for x86_64..."
-swiftc -parse-as-library -o "$APP_PATH/Contents/MacOS/ClaudeUsageBar_x86_64" \
+swiftc -parse-as-library -o "$APP_PATH/Contents/MacOS/AIUsageBar_x86_64" \
     $FILE_LIST \
     -framework SwiftUI \
     -framework AppKit \
@@ -92,19 +101,19 @@ fi
 
 # Create universal binary
 echo "Creating universal binary..."
-lipo -create -output "$APP_PATH/Contents/MacOS/ClaudeUsageBar" \
-    "$APP_PATH/Contents/MacOS/ClaudeUsageBar_arm64" \
-    "$APP_PATH/Contents/MacOS/ClaudeUsageBar_x86_64"
+lipo -create -output "$APP_PATH/Contents/MacOS/AIUsageBar" \
+    "$APP_PATH/Contents/MacOS/AIUsageBar_arm64" \
+    "$APP_PATH/Contents/MacOS/AIUsageBar_x86_64"
 
 # Clean up individual arch binaries
-rm "$APP_PATH/Contents/MacOS/ClaudeUsageBar_arm64"
-rm "$APP_PATH/Contents/MacOS/ClaudeUsageBar_x86_64"
+rm "$APP_PATH/Contents/MacOS/AIUsageBar_arm64"
+rm "$APP_PATH/Contents/MacOS/AIUsageBar_x86_64"
 
 # Create PkgInfo file
 echo -n "APPL????" > "$APP_PATH/Contents/PkgInfo"
 
 # Set proper permissions first
-chmod 755 "$APP_PATH/Contents/MacOS/ClaudeUsageBar"
+chmod 755 "$APP_PATH/Contents/MacOS/AIUsageBar"
 
 # Clean extended attributes before signing
 xattr -cr "$APP_PATH"
