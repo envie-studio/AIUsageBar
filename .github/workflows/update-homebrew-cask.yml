@@ -1,0 +1,80 @@
+name: Update Homebrew Cask
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-homebrew:
+    name: Update Homebrew Cask
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get release version
+        id: get_version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Release version: ${VERSION}"
+
+      - name: Download release asset
+        run: |
+          wget https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.version }}/AIUsageBar-v${{ steps.get_version.outputs.version }}.zip
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          SHA256=$(shasum -a 256 AIUsageBar-v${{ steps.get_version.outputs.version }}.zip | awk '{print $1}')
+          echo "sha256=${SHA256}" >> $GITHUB_OUTPUT
+          echo "SHA256: ${SHA256}"
+
+      - name: Update Homebrew cask
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+          gh repo fork Homebrew/homebrew-cask --clone=true
+          cd homebrew-cask
+
+          mkdir -p Casks/a
+          cat > Casks/a/aiusagebar.rb << 'EOF'
+          cask "aiusagebar" do
+            version "${{ steps.get_version.outputs.version }}"
+            sha256 "${{ steps.sha256.outputs.sha256 }}"
+
+            url "https://github.com/${{ github.repository }}/releases/download/v\#{version}/AIUsageBar-v\#{version}.zip",
+                verified: "github.com/${{ github.repository_owner }}/AIUsageBar/"
+
+            name "AIUsageBar"
+            desc "Track AI usage across multiple providers from your menu bar"
+            homepage "https://github.com/${{ github.repository }}"
+
+            auto_updates true
+            depends_on macos: ">= :monterey"
+
+            app "AIUsageBar.app"
+
+            uninstall quit: "com.aiusagebar"
+
+            zap trash: [
+              "~/Library/Preferences/com.aiusagebar.plist",
+            ],
+                rmdir: [
+              "~/Library/Caches/com.aiusagebar",
+            ]
+          end
+          EOF
+
+          git checkout -b aiusagebar-${{ steps.get_version.outputs.version }}
+          git add Casks/a/aiusagebar.rb
+          git commit -m "aiusagebar ${{ steps.get_version.outputs.version }} (new formula)"
+          git push --set-upstream origin aiusagebar-${{ steps.get_version.outputs.version }}
+
+          gh pr create --repo Homebrew/homebrew-cask \
+            --title "aiusagebar ${{ steps.get_version.outputs.version }} (new formula)" \
+            --body "Closes #XXXXXX" \
+            --head ${{ github.actor }}:aiusagebar-${{ steps.get_version.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

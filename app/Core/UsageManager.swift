@@ -153,19 +153,26 @@ class MultiProviderUsageManager: ObservableObject {
             return snapshot
         }
 
-        // Fall back to Claude if authenticated
-        if let claudeSnapshot = snapshots["claude"] {
+        // Fall back to Claude if authenticated and enabled
+        if let claudeProvider = providers["claude"], 
+           claudeProvider.isAuthenticated && 
+           settings.isProviderEnabled(claudeProvider.id),
+           let claudeSnapshot = snapshots["claude"] {
             return claudeSnapshot
         }
 
-        // Return first available snapshot
-        return snapshots.values.first
+        // Return first enabled provider's snapshot
+        return providers.values
+            .filter { $0.isAuthenticated && settings.isProviderEnabled($0.id) }
+            .compactMap { snapshots[$0.id] }
+            .first
     }
 
     /// Get the highest usage percentage across all providers
     var maxUsagePercentage: Int {
-        let maxPct = snapshots.values
-            .map { $0.maxUsagePercentage }
+        let maxPct = providers.values
+            .filter { $0.isAuthenticated && settings.isProviderEnabled($0.id) }
+            .compactMap { snapshots[$0.id]?.maxUsagePercentage }
             .max() ?? 0
         return Int(maxPct)
     }
@@ -260,7 +267,9 @@ class MultiProviderUsageManager: ObservableObject {
         var providerInfos: [(shortName: String, percentage: Int)] = []
 
         for provider in providers.values {
-            if provider.isAuthenticated, let snapshot = snapshots[provider.id] {
+            if provider.isAuthenticated && 
+               settings.isProviderEnabled(provider.id), 
+               let snapshot = snapshots[provider.id] {
                 let percentage = Int(snapshot.maxUsagePercentage)
                 providerInfos.append((provider.displayConfig.shortName, percentage))
             }

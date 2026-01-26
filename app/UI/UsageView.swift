@@ -131,7 +131,7 @@ struct MultiProviderUsageView: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(Array(usageManager.providers.values), id: \.id) { provider in
-                            if provider.isAuthenticated {
+                            if provider.isAuthenticated && AppSettings.shared.isProviderEnabled(provider.id) {
                                 ProviderCardView(
                                     provider: provider,
                                     snapshot: usageManager.snapshot(for: provider.id)
