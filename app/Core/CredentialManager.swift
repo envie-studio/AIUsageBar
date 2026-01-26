@@ -5,9 +5,56 @@ import Security
 class CredentialManager {
     static let shared = CredentialManager()
 
-    private let servicePrefix = "com.claudeusagebar"
+    private let servicePrefix = "com.aiusagebar"
+    private let legacyServicePrefix = "com.claudeusagebar"
 
-    private init() {}
+    private init() {
+        // Migrate credentials from old service name on first run
+        migrateFromLegacyService()
+    }
+
+    /// Migrate credentials from old service name to new one
+    private func migrateFromLegacyService() {
+        let providerIds = ["claude", "openai", "zhipu"]
+        for providerId in providerIds {
+            if let credentials = loadFromService(for: providerId, service: legacyServicePrefix) {
+                // Save to new service
+                try? save(credentials)
+                // Delete from old service
+                deleteFromService(for: providerId, service: legacyServicePrefix)
+                NSLog("CredentialManager: Migrated \(providerId) credentials to new keychain service")
+            }
+        }
+    }
+
+    private func loadFromService(for providerId: String, service: String) -> ProviderCredentials? {
+        let key = "\(service).\(providerId)"
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne
+        ]
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        guard status == errSecSuccess,
+              let data = result as? Data,
+              let credentials = try? JSONDecoder().decode(ProviderCredentials.self, from: data) else {
+            return nil
+        }
+        return credentials
+    }
+
+    private func deleteFromService(for providerId: String, service: String) {
+        let key = "\(service).\(providerId)"
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
 
     // MARK: - Public API
 

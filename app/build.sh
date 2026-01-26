@@ -20,22 +20,12 @@ cp Info.plist "$APP_PATH/Contents/"
 # Create icon if it doesn't exist
 if [ ! -f "AIUsageBar.icns" ]; then
     echo "Creating app icon..."
-    # Try to copy from old name if exists
-    if [ -f "ClaudeUsageBar.icns" ]; then
-        cp ClaudeUsageBar.icns AIUsageBar.icns
-    else
-        ./make_app_icon.sh >/dev/null 2>&1
-    fi
+    ./make_app_icon.sh >/dev/null 2>&1
 fi
 
 # Copy icon to Resources
 if [ -f "AIUsageBar.icns" ]; then
     cp AIUsageBar.icns "$APP_PATH/Contents/Resources/"
-    # Update Info.plist to reference icon
-    /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AIUsageBar" "$APP_PATH/Contents/Info.plist" 2>/dev/null || \
-    /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AIUsageBar" "$APP_PATH/Contents/Info.plist"
-elif [ -f "ClaudeUsageBar.icns" ]; then
-    cp ClaudeUsageBar.icns "$APP_PATH/Contents/Resources/AIUsageBar.icns"
     /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AIUsageBar" "$APP_PATH/Contents/Info.plist" 2>/dev/null || \
     /usr/libexec/PlistBuddy -c "Set :CFBundleIconFile AIUsageBar" "$APP_PATH/Contents/Info.plist"
 fi
@@ -53,7 +43,7 @@ SWIFT_FILES=(
     "UI/ProviderCardView.swift"
     "UI/SettingsView.swift"
     "UI/UsageView.swift"
-    "ClaudeUsageBar.swift"
+    "AIUsageBar.swift"
 )
 
 # Build the file list
@@ -119,7 +109,7 @@ chmod 755 "$APP_PATH/Contents/MacOS/AIUsageBar"
 xattr -cr "$APP_PATH"
 
 # Sign with Developer ID certificate
-DEVELOPER_ID="Developer ID Application: Linkko Technology Pte Ltd (Q467HQ5432)"
+DEVELOPER_ID="Developer ID Application: Miguel Bandeira (SRL7W9A4C6)"
 if codesign --force --deep --options runtime --sign "$DEVELOPER_ID" "$APP_PATH" 2>/dev/null; then
     echo "✅ App signed with Developer ID"
 else
