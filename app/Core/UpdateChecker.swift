@@ -10,7 +10,7 @@ class UpdateChecker: ObservableObject {
     @Published var releaseURL: URL?
     @Published var dismissed: Bool = false
 
-    private let githubRepo = "miguelbandeira/AIUsageBar"
+    private let githubRepo = "miguelgbandeira/AIUsageBar"
     private let lastCheckKey = "last_update_check"
     private let checkIntervalSeconds: TimeInterval = 86400 // 24 hours
 
