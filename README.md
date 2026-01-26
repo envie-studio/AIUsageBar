@@ -7,6 +7,10 @@
 
 A lightweight, open-source macOS menu bar application that displays your AI usage limits across multiple providers with real-time updates and notifications.
 
+> [!NOTE]
+> This project is a fork of [ClaudeUsageBar](https://github.com/Artzainnn/ClaudeUsageBar) by [@MaximeB](https://x.com/MaximeMB) and later expanded by [envie studio](https://envie.studio/).
+> Thanks for creating the original app and making it open source! All donation links still point to him.
+
 ## 📥 Download
 
 **[Download Latest Release](https://github.com/miguelgbandeira/AIUsageBar/releases)** (ZIP Archive)
@@ -127,23 +131,14 @@ MIT License - see [LICENSE](LICENSE) for details
 
 This app uses internal API endpoints from various AI providers which may change without notice. It is not affiliated with or endorsed by Anthropic, Zhipu, or any other AI provider. Use at your own risk.
 
-## 🙏 Acknowledgments
-
-This project is a fork of [ClaudeUsageBar](https://github.com/Artzainnn/ClaudeUsageBar) by [@Artzainnn](https://github.com/Artzainnn).
-Thanks for creating the original app and making it open source!
-
 ## 🙏 Support
 
 If you find this useful, consider:
 - ⭐ Starring this repository
 - 📢 Sharing with others who use AI tools
-- ☕ [Buy me a coffee](https://buymeacoffee.com/miguelgbandeira)
 
 ## 🔗 Links
 
 - **Issues:** [GitHub Issues](https://github.com/miguelgbandeira/AIUsageBar/issues)
 - **Releases:** [GitHub Releases](https://github.com/miguelgbandeira/AIUsageBar/releases)
 
----
-
-**Made with ❤️ for the AI community**
