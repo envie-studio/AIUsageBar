@@ -10,30 +10,57 @@
 .Trashes
 
 # Build artifacts
+build/
 app/build/
 App/build/
 *.dmg
 *.zip
 app/temp.dmg
 App/temp.dmg
+DerivedData/
+*.dSYM
+*.dSYM.zip
+
+# Archives
+*.xcarchive
+*.ipa
 
 # Icon generation
 *.iconset/
 app/*.iconset/
 App/*.iconset/
 
+# Code signing & certificates
+*.p12
+*.pem
+*.cer
+*.key
+*.mobileprovision
+*.provisionprofile
+ExportOptions.plist
+
 # IDE / Editors
 .vscode/
 .idea/
 *.xcworkspace/
+xcuserdata/
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+Packages/
 
 # Logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.crash
 
 # Testing
 .pytest_cache/
@@ -45,6 +72,9 @@ htmlcov/
 node_modules/
 .pnp/
 .pnp.js
+Carthage/Build/
+Cartfile.resolved
+Pods/
 
 # Environment variables
 .env
@@ -61,3 +91,9 @@ node_modules/
 *.temp
 tmp/
 temp/
+
+# Local configuration (user-specific)
+*.local
+
+# Release script (contains personal signing credentials)
+app/release.sh
