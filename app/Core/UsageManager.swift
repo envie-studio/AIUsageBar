@@ -65,17 +65,17 @@ class MultiProviderUsageManager: ObservableObject {
 
     private func registerProviders() {
         let claude = ClaudeWebProvider()
-        let openai = OpenAIWebProvider()
         let zhipu = ZhipuWebProvider()
+        let codex = CodexProvider()
 
         providers[claude.id] = claude
-        providers[openai.id] = openai
         providers[zhipu.id] = zhipu
+        providers[codex.id] = codex
 
         // Register with global registry
         ProviderRegistry.shared.register(claude)
-        ProviderRegistry.shared.register(openai)
         ProviderRegistry.shared.register(zhipu)
+        ProviderRegistry.shared.register(codex)
     }
 
     private func setupSubscriptions() {

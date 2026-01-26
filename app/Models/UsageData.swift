@@ -146,4 +146,10 @@ struct ProviderDisplayConfig {
         iconName: "bolt.fill",
         shortName: "Z.ai"
     )
+
+    static let codex = ProviderDisplayConfig(
+        primaryColor: "#10A37F",  // OpenAI green
+        iconName: "chevron.left.forwardslash.chevron.right",
+        shortName: "Codex"
+    )
 }
