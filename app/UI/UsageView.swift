@@ -4,11 +4,17 @@ import AppKit
 /// Main usage display view with multi-provider support
 struct MultiProviderUsageView: View {
     @ObservedObject var usageManager: MultiProviderUsageManager
+    @ObservedObject var updateChecker: UpdateChecker = UpdateChecker.shared
     @State private var showingSettings: Bool = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // Update banner
+                if updateChecker.updateAvailable && !updateChecker.dismissed {
+                    UpdateBannerView(updateChecker: updateChecker)
+                }
+
                 // Header
                 HStack {
                     Text("AI Usage")
@@ -351,3 +357,52 @@ struct LegacyCookieInputView: View {
 
 // Type alias for backwards compatibility
 typealias UsageView = MultiProviderUsageView
+
+/// Banner displayed when a new version is available
+struct UpdateBannerView: View {
+    @ObservedObject var updateChecker: UpdateChecker
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundColor(.white)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Update available")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white)
+                Text("v\(updateChecker.latestVersion)")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.9))
+            }
+
+            Spacer()
+
+            Button("Download") {
+                updateChecker.openReleasesPage()
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(.white)
+
+            Button(action: {
+                updateChecker.dismissUpdate()
+            }) {
+                Image(systemName: "xmark")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .background(
+            LinearGradient(
+                colors: [Color.blue, Color.blue.opacity(0.8)],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+        .cornerRadius(8)
+    }
+}

@@ -40,6 +40,7 @@ SWIFT_FILES=(
     "Core/Providers/OpenAIProvider.swift"
     "Core/Providers/ZhipuProvider.swift"
     "Core/UsageManager.swift"
+    "Core/UpdateChecker.swift"
     "UI/ProviderCardView.swift"
     "UI/SettingsView.swift"
     "UI/UsageView.swift"

@@ -24,6 +24,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var usageManager: MultiProviderUsageManager!
     var eventMonitor: Any?
     var hotKeyRef: EventHotKeyRef?
+    var updateChecker: UpdateChecker!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSLog("✅ App launched")
@@ -43,11 +44,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Initialize usage manager
         usageManager = MultiProviderUsageManager(statusItem: statusItem, delegate: self)
 
+        // Initialize update checker
+        updateChecker = UpdateChecker.shared
+        updateChecker.checkForUpdates()
+
         // Create popover
         popover = NSPopover()
         popover.contentSize = NSSize(width: 380, height: 480)
         popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: UsageView(usageManager: usageManager))
+        popover.contentViewController = NSHostingController(rootView: UsageView(usageManager: usageManager, updateChecker: updateChecker))
 
         // Fetch initial data
         usageManager.fetchUsage()
