@@ -182,6 +182,21 @@ struct MultiProviderUsageView: View {
             if showingSettings {
                 SettingsView(usageManager: usageManager)
             }
+
+            // Check for Updates
+            HStack(spacing: 8) {
+                Button("Check for Updates") {
+                    updateChecker.checkForUpdates(force: true)
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
+
+                if updateChecker.isUpToDate {
+                    Text("Already up to date!")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
+            }
         }
         }
         .padding()

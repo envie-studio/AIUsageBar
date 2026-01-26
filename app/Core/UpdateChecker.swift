@@ -9,6 +9,7 @@ class UpdateChecker: ObservableObject {
     @Published var latestVersion: String = ""
     @Published var releaseURL: URL?
     @Published var dismissed: Bool = false
+    @Published var isUpToDate: Bool = false
 
     private let githubRepo = "miguelgbandeira/AIUsageBar"
     private let lastCheckKey = "last_update_check"
@@ -88,7 +89,13 @@ class UpdateChecker: ObservableObject {
                 } else {
                     DispatchQueue.main.async {
                         self.updateAvailable = false
+                        self.isUpToDate = true
                         NSLog("✅ App is up to date")
+
+                        // Clear the message after 3 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            self.isUpToDate = false
+                        }
                     }
                 }
             } catch {
