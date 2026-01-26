@@ -13,7 +13,7 @@ A lightweight, open-source macOS menu bar application that displays your AI usag
 
 ## 📥 Download
 
-**[Download Latest Release](https://github.com/miguelgbandeira/AIUsageBar/releases)** (ZIP Archive)
+**[Download Latest Release](https://github.com/envie-studio/AIUsageBar/releases)** (ZIP Archive)
 
 ## 📦 Set Up (1mn)
 
@@ -41,7 +41,7 @@ Each provider has its own authentication method. Configure credentials in the ap
 
 ## 🚀 Quick Start
 
-1. **Download** the latest ZIP from [Releases](https://github.com/miguelgbandeira/AIUsageBar/releases)
+1. **Download** the latest ZIP from [Releases](https://github.com/envie-studio/AIUsageBar/releases)
 2. **Extract** and drag AIUsageBar to Applications folder
 3. **Launch** AIUsageBar from Applications
 4. **Configure providers** - Set up credentials for your AI providers
@@ -117,7 +117,7 @@ The built app will be in `app/build/AIUsageBar.app`
 
 Contributions are welcome! Here's how you can help:
 
-- 🐛 Report bugs via [Issues](https://github.com/miguelgbandeira/AIUsageBar/issues)
+- 🐛 Report bugs via [Issues](https://github.com/envie-studio/AIUsageBar/issues)
 - 💡 Suggest features or improvements
 - 🔧 Submit pull requests
 - 📖 Improve documentation
@@ -139,6 +139,6 @@ If you find this useful, consider:
 
 ## 🔗 Links
 
-- **Issues:** [GitHub Issues](https://github.com/miguelgbandeira/AIUsageBar/issues)
-- **Releases:** [GitHub Releases](https://github.com/miguelgbandeira/AIUsageBar/releases)
+- **Issues:** [GitHub Issues](https://github.com/envie-studio/AIUsageBar/issues)
+- **Releases:** [GitHub Releases](https://github.com/envie-studio/AIUsageBar/releases)
 

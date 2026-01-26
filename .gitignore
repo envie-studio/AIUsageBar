@@ -97,3 +97,6 @@ temp/
 
 # Release script (contains personal signing credentials)
 app/release.sh
+
+# Homebrew cask documentation (for reference only)
+HOMEBREW_INSTRUCTIONS.md

@@ -160,6 +160,17 @@ struct MultiProviderUsageView: View {
                 }
             }
 
+            // Settings
+            Button(showingSettings ? "Hide Settings" : "Settings") {
+                showingSettings.toggle()
+            }
+            .buttonStyle(.borderless)
+            .font(.caption)
+
+            if showingSettings {
+                SettingsView(usageManager: usageManager)
+            }
+
             // Support link
             Button(action: {
                 NSWorkspace.shared.open(URL(string: "https://donate.stripe.com/3cIcN5b5H7Q8ay8bIDfIs02")!)
@@ -171,17 +182,6 @@ struct MultiProviderUsageView: View {
             .buttonStyle(.borderless)
             .font(.caption)
             .foregroundColor(.orange)
-
-            // Settings
-            Button(showingSettings ? "Hide Settings" : "Settings") {
-                showingSettings.toggle()
-            }
-            .buttonStyle(.borderless)
-            .font(.caption)
-
-            if showingSettings {
-                SettingsView(usageManager: usageManager)
-            }
 
             // Check for Updates
             HStack(spacing: 8) {

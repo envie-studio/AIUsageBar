@@ -60,7 +60,7 @@ gh pr create --repo Homebrew/homebrew-cask \
 - Auto-updates enabled
 - Built for macOS 12.0+
 
-Homepage: https://github.com/miguelgbandeira/AIUsageBar"
+Homepage: https://github.com/envie-studio/AIUsageBar"
 ```
 
 ## 📋 PR Description Template
@@ -86,7 +86,7 @@ AIUsageBar: Track AI usage across multiple providers from your menu bar
 - SHA256 verified downloads
 - Uses `.zip` distribution format
 
-**Homepage:** https://github.com/miguelgbandeira/AIUsageBar
+**Homepage:** https://github.com/envie-studio/AIUsageBar
 ```
 
 ## ⏱️ What to Expect
