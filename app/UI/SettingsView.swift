@@ -43,34 +43,6 @@ struct SettingsView: View {
 
             Divider()
 
-            // Primary Provider Selection (only show if multiple providers are connected)
-            let connectedProviders = usageManager.providers.values.filter { $0.isAuthenticated }
-            if connectedProviders.count > 1 {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Menu Bar Display")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-
-                    Picker("", selection: Binding(
-                        get: { AppSettings.shared.primaryProviderId ?? "claude" },
-                        set: { AppSettings.shared.primaryProviderId = $0 }
-                    )) {
-                        ForEach(Array(connectedProviders), id: \.id) { provider in
-                            Text(provider.displayConfig.shortName)
-                                .tag(provider.id)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-
-                    Text("Which provider to show in the menu bar")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-
-                Divider()
-            }
-
             // General Settings
             VStack(alignment: .leading, spacing: 8) {
                 Toggle(isOn: Binding(

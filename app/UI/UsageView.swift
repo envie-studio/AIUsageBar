@@ -5,7 +5,6 @@ import AppKit
 struct MultiProviderUsageView: View {
     @ObservedObject var usageManager: MultiProviderUsageManager
     @State private var showingSettings: Bool = false
-    @State private var showingProviderCards: Bool = true
 
     var body: some View {
         ScrollView {
@@ -121,27 +120,21 @@ struct MultiProviderUsageView: View {
                 .cornerRadius(8)
             }
 
-            // Provider cards or legacy Claude view
+            // Provider cards
             if usageManager.hasFetchedData {
-                if showingProviderCards {
-                    // Multi-provider view
-                    ScrollView {
-                        VStack(spacing: 12) {
-                            ForEach(Array(usageManager.providers.values), id: \.id) { provider in
-                                if provider.isAuthenticated {
-                                    ProviderCardView(
-                                        provider: provider,
-                                        snapshot: usageManager.snapshot(for: provider.id)
-                                    )
-                                }
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(Array(usageManager.providers.values), id: \.id) { provider in
+                            if provider.isAuthenticated {
+                                ProviderCardView(
+                                    provider: provider,
+                                    snapshot: usageManager.snapshot(for: provider.id)
+                                )
                             }
                         }
                     }
-                    .frame(maxHeight: 300)
-                } else {
-                    // Legacy Claude-only view for backwards compatibility
-                    LegacyClaudeUsageView(usageManager: usageManager)
                 }
+                .frame(maxHeight: 300)
 
                 Divider()
 
@@ -152,12 +145,6 @@ struct MultiProviderUsageView: View {
                         .foregroundColor(.secondary)
 
                     Spacer()
-
-                    Button(showingProviderCards ? "Simple" : "Detailed") {
-                        showingProviderCards.toggle()
-                    }
-                    .buttonStyle(.borderless)
-                    .font(.caption)
 
                     Button("Refresh") {
                         usageManager.fetchUsage()

@@ -256,15 +256,32 @@ class MultiProviderUsageManager: ObservableObject {
     }
 
     private func updateStatusBar() {
-        // Use primary provider or highest usage
+        // Collect all authenticated providers with their percentages
+        var providerInfos: [(shortName: String, percentage: Int)] = []
+
+        for provider in providers.values {
+            if provider.isAuthenticated, let snapshot = snapshots[provider.id] {
+                let percentage = Int(snapshot.maxUsagePercentage)
+                providerInfos.append((provider.displayConfig.shortName, percentage))
+            }
+        }
+
+        // Sort by name for consistent ordering
+        providerInfos.sort { $0.shortName < $1.shortName }
+
+        if providerInfos.isEmpty {
+            appDelegate?.updateStatusIcon(percentage: 0)
+        } else {
+            appDelegate?.updateStatusIconMultiple(providers: providerInfos)
+        }
+
+        // Use primary provider or highest usage for notifications
         let percentage: Int
         if let primary = primarySnapshot {
             percentage = Int(primary.maxUsagePercentage)
         } else {
             percentage = maxUsagePercentage
         }
-
-        appDelegate?.updateStatusIcon(percentage: percentage)
         checkNotificationThresholds(percentage: percentage)
     }
 

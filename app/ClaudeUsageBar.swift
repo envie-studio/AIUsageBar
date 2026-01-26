@@ -189,13 +189,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func updateStatusIcon(percentage: Int) {
+        // Legacy single-provider update - use multi-provider with single item
+        updateStatusIconMultiple(providers: [("", percentage)])
+    }
+
+    func updateStatusIconMultiple(providers: [(shortName: String, percentage: Int)]) {
         guard let button = statusItem.button else { return }
 
-        // Determine color based on percentage
+        // Get the highest percentage for the icon color
+        let maxPercentage = providers.map { $0.percentage }.max() ?? 0
+
+        // Determine color based on max percentage
         let color: NSColor
-        if percentage < 70 {
+        if maxPercentage < 70 {
             color = NSColor(red: 0.13, green: 0.77, blue: 0.37, alpha: 1.0) // Green
-        } else if percentage < 90 {
+        } else if maxPercentage < 90 {
             color = NSColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 1.0) // Yellow
         } else {
             color = NSColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0) // Red
@@ -203,10 +211,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create spark icon with color
         let sparkIcon = createSparkIcon(color: color)
-
         button.image = sparkIcon
+
         if AppSettings.shared.showPercentageInMenuBar {
-            button.title = " \(percentage)%"
+            if providers.count == 1 {
+                // Single provider - show name and percentage
+                button.title = " \(providers[0].shortName) \(providers[0].percentage)%"
+            } else {
+                // Multiple providers - "Claude 10% · Z.ai 2%"
+                let parts = providers.map { "\($0.shortName) \($0.percentage)%" }
+                button.title = " " + parts.joined(separator: " · ")
+            }
         } else {
             button.title = ""
         }

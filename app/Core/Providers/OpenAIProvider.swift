@@ -8,7 +8,7 @@ class OpenAIWebProvider: UsageProvider {
     // MARK: - UsageProvider Protocol
 
     let id = "openai"
-    let name = "ChatGPT Plus"
+    let name = "OpenAI"
     let authMethod: AuthMethod = .cookie
 
     @Published private(set) var authState: AuthState = .notConfigured
