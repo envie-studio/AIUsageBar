@@ -1,19 +1,22 @@
-# ClaudeUsageBar
+# AIUsageBar
 
-> Track your Claude.ai usage right from your Mac menu bar!
+> Track your AI usage across multiple providers right from your Mac menu bar!
 
-A lightweight macOS menu bar app that displays your Claude.ai session and weekly usage limits with real-time updates and notifications.
+A lightweight macOS menu bar app that displays your AI usage limits across multiple providers with real-time updates and notifications.
 
 ## ✨ Features
 
-- 🟢 **Real-time Usage Tracking**: Monitor session (5-hour) and weekly (7-day) usage
+- 🌐 **Multi-Provider Support**: Track usage across Claude, Zhipu/Z.ai, Codex, and more
+- 🔌 **Extensible Architecture**: Easy to add new AI providers
+- 🟢 **Real-time Usage Tracking**: Monitor session and usage limits
 - 🎨 **Color-Coded Menu Bar Icon**: Visual indication of usage levels (green/yellow/red)
 - 🔔 **Smart Notifications**: Alerts at 25%, 50%, 75%, and 90% usage thresholds
 - ⚡ **Auto-Refresh**: Updates every 5 minutes automatically
 - ⌨️ **Keyboard Shortcut**: Toggle popup with Cmd+U from anywhere
 - 🔒 **Privacy First**: All data stored locally on your Mac
-- 📊 **Pro Plan Support**: Shows weekly Sonnet usage for Pro subscribers
+- 📊 **Pro Plan Support**: Shows weekly Sonnet usage for Claude Pro subscribers
 - 🎯 **Menu Bar Only**: No Dock icon, stays out of your way
+- 🔄 **Auto-Update**: Checks for new versions automatically
 
 ## 🖼️ Screenshots
 
@@ -22,35 +25,25 @@ A lightweight macOS menu bar app that displays your Claude.ai session and weekly
 - Example: `🟢 45%` (green < 70%, yellow 70-90%, red > 90%)
 
 **Popup Interface:**
-- Session (5-hour) usage with progress bar and reset time
-- Weekly (7-day) usage with progress bar and reset date
-- Weekly Sonnet usage (Pro plan only)
+- Provider cards showing usage for each configured service
+- Session and limit usage with progress bars
 - Settings for notifications and keyboard shortcuts
 
 ## 📋 Requirements
 
 - macOS 12.0 (Monterey) or later
 - Apple Silicon (M1/M2/M3) or Intel Mac
-- Active Claude.ai account (Free or Pro)
 
 ## 🚀 Installation
 
-### Option 1: DMG Installer (Recommended)
+### Option 1: ZIP Archive (Recommended)
 
-1. Download `ClaudeUsageBar-Installer.dmg` from [Releases](../../releases)
-2. Double-click the DMG file
-3. Drag ClaudeUsageBar to the Applications folder
-4. Eject the DMG
-5. Open ClaudeUsageBar from Applications
-
-### Option 2: ZIP Archive
-
-1. Download `ClaudeUsageBar.zip` from [Releases](../../releases)
+1. Download `AIUsageBar.zip` from [Releases](../../releases)
 2. Extract the ZIP file
-3. Drag ClaudeUsageBar.app to Applications folder
-4. Open ClaudeUsageBar from Applications
+3. Drag AIUsageBar.app to Applications folder
+4. Open AIUsageBar from Applications
 
-### Option 3: Build from Source
+### Option 2: Build from Source
 
 ```bash
 cd app
@@ -58,13 +51,13 @@ chmod +x build.sh
 ./build.sh
 ```
 
-The built app will be in `build/ClaudeUsageBar.app`.
+The built app will be in `build/AIUsageBar.app`.
 
 ## 🔧 First-Time Setup
 
-When you first launch ClaudeUsageBar, you'll see a welcome message. Follow these steps:
+When you first launch AIUsageBar, you'll see a welcome message. Configure your providers in the settings.
 
-### Getting Your Session Cookie
+### Claude Provider - Getting Your Session Cookie
 
 1. Go to **Settings > Usage** on claude.ai
 2. Press **F12** (or Cmd+Option+I on Mac)
@@ -78,7 +71,11 @@ When you first launch ClaudeUsageBar, you'll see a welcome message. Follow these
 1. Click **"Set Session Cookie"** in the app
 2. Paste your cookie (Cmd+V works!)
 3. Click **"Save Cookie & Fetch"**
-4. Your usage will appear immediately! 🎉
+4. Your usage will appear immediately!
+
+### Other Providers
+
+Each provider has its own authentication method. Configure credentials in the app's settings panel.
 
 ## ⚙️ Settings
 
@@ -95,34 +92,27 @@ Access settings by clicking the gear icon in the popup:
 - Click "Enable Keyboard Shortcut" to grant permission
 
 ### Launch at Login
-- Start ClaudeUsageBar automatically when you log in
+- Start AIUsageBar automatically when you log in
 
 ## 🔒 Privacy & Security
 
 - ✅ **All data stays on your Mac** - stored in UserDefaults only
 - ✅ **No analytics or tracking** - zero external services
-- ✅ **Session cookies stored locally** - never sent anywhere except claude.ai
-- ✅ **No hardcoded credentials** - org ID extracted dynamically from your cookie
+- ✅ **Credentials stored locally** - never sent anywhere except to the respective providers
 - ✅ **Open source** - review the code yourself
 
 ## 🎯 How It Works
 
-1. Uses your session cookie to authenticate with claude.ai API
-2. Fetches usage data from the same endpoints the website uses
-3. Extracts org ID dynamically from your cookie
-4. Displays real-time usage in your menu bar
-5. Sends notifications when you hit usage thresholds
+1. Uses your credentials to authenticate with each provider's API
+2. Fetches usage data from the same endpoints the websites use
+3. Displays real-time usage in your menu bar
+4. Sends notifications when you hit usage thresholds
 
-## 🔨 Building & Distribution
+## 🔨 Building
 
 ### Build the App
 ```bash
 ./build.sh
-```
-
-### Create DMG Installer
-```bash
-./create_dmg.sh
 ```
 
 ### Clean Build
@@ -134,11 +124,11 @@ rm -rf build
 ## 🐛 Troubleshooting
 
 ### "No data yet" showing
-- Make sure you've pasted your session cookie
-- Click "Save Cookie & Fetch"
-- Verify you copied the full cookie string
+- Make sure you've configured your provider credentials
+- Click refresh to fetch the latest data
+- Verify your credentials are valid
 
-### Cookie expired
+### Cookie expired (Claude)
 - Session cookies expire periodically
 - Get a new cookie from claude.ai
 - Click "Clear Cookie" then re-add it
@@ -156,21 +146,15 @@ rm -rf build
 ### Usage not updating
 - App auto-refreshes every 5 minutes
 - Click the refresh button to update manually
-- If cookie expired, get a new one
-
-## 📦 Distribution Files
-
-- **ClaudeUsageBar-Installer.dmg** - Drag-to-install DMG (1.6 MB)
-- **README.md** - This file
-- **LICENSE** - MIT License
+- If credentials expired, update them
 
 ## 🤝 Contributing
 
-This is a personal project, but feel free to:
+Contributions are welcome! Here's how you can help:
 - Report bugs via Issues
 - Suggest features
 - Submit pull requests
-- Fork and customize for your needs
+- Add support for new AI providers
 
 ## 📄 License
 
@@ -178,9 +162,12 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## ⚠️ Disclaimer
 
-This app uses claude.ai's internal API endpoints which may change without notice. It is not affiliated with or endorsed by Anthropic. Use at your own risk.
+This app uses internal API endpoints from various AI providers which may change without notice. It is not affiliated with or endorsed by Anthropic, Zhipu, or any other AI provider. Use at your own risk.
 
 ## 🙏 Acknowledgments
+
+This project is a fork of [ClaudeUsageBar](https://github.com/Artzainnn/ClaudeUsageBar) by [@Artzainnn](https://github.com/Artzainnn).
+Thanks for creating the original app and making it open source!
 
 Built with:
 - SwiftUI for the interface
@@ -190,4 +177,4 @@ Built with:
 
 ---
 
-**Made with ❤️ for the Claude community**
+**Made with ❤️ for the AI community**

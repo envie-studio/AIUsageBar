@@ -1,6 +1,6 @@
 #!/bin/bash
 
-APP_NAME="ClaudeUsageBar"
+APP_NAME="AIUsageBar"
 DMG_NAME="${APP_NAME}-Installer"
 VERSION="1.0"
 
