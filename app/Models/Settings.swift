@@ -25,6 +25,9 @@ class AppSettings: ObservableObject {
     @Published var showPercentageInMenuBar: Bool {
         didSet { save() }
     }
+    @Published var lastOpenedTab: String {
+        didSet { save() }
+    }
 
     private let defaults = UserDefaults.standard
 
@@ -35,6 +38,7 @@ class AppSettings: ObservableObject {
         self.primaryProviderId = defaults.string(forKey: "primary_provider_id")
         self.refreshIntervalSeconds = defaults.integer(forKey: "refresh_interval_seconds")
         self.showPercentageInMenuBar = defaults.bool(forKey: "show_percentage_in_menu_bar")
+        self.lastOpenedTab = defaults.string(forKey: "last_opened_tab") ?? "overview"
 
         // Load enabled providers
         if let savedIds = defaults.stringArray(forKey: "enabled_provider_ids") {
@@ -74,6 +78,7 @@ class AppSettings: ObservableObject {
         defaults.set(lastNotifiedThresholds, forKey: "last_notified_thresholds")
         defaults.set(refreshIntervalSeconds, forKey: "refresh_interval_seconds")
         defaults.set(showPercentageInMenuBar, forKey: "show_percentage_in_menu_bar")
+        defaults.set(lastOpenedTab, forKey: "last_opened_tab")
         defaults.synchronize()
     }
 
