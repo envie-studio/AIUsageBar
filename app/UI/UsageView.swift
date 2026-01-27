@@ -267,12 +267,12 @@ struct MultiProviderUsageView: View {
         } else if showingOnboarding {
             height = 480
         } else if case .overview = tabState.selectedTab {
-            height = min(520, CGFloat(240 + enabledCount * 80))
+            height = min(560, CGFloat(280 + enabledCount * 80))
         } else {
             height = 420
         }
 
-        height = min(max(height, 300), 550)
+        height = min(max(height, 300), 600)
 
         withAnimation(.easeInOut(duration: 0.2)) {
             popoverWidth = width
