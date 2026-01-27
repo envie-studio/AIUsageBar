@@ -91,6 +91,14 @@ class MultiProviderUsageManager: ObservableObject {
                 }
                 .store(in: &cancellables)
         }
+
+        // Subscribe to settings changes to update status bar when providers are enabled/disabled
+        settings.$enabledProviderIds
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateStatusBar()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public Methods
