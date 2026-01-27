@@ -239,17 +239,17 @@ struct MultiProviderUsageView: View {
     }
 
     private func updatePopoverSize() {
-        var width: CGFloat = 380
-
         let enabledCount = usageManager.providers.values
             .filter { $0.isAuthenticated && AppSettings.shared.isProviderEnabled($0.id) }
             .count
 
-        if enabledCount >= 3 {
-            width = 420
-        } else if enabledCount >= 6 {
-            width = 460
-        }
+        // Dynamic width based on tab count
+        // Each tab needs approximately 75pt (icon + name + badge + padding)
+        let tabCount = enabledCount + 1  // +1 for Overview tab
+        let minWidth: CGFloat = 380
+        let perTabWidth: CGFloat = 75
+        let calculatedWidth = minWidth + CGFloat(max(0, tabCount - 2)) * perTabWidth
+        let width = min(calculatedWidth, 550)  // Cap at reasonable max
 
         var height: CGFloat = 300
 
@@ -258,12 +258,12 @@ struct MultiProviderUsageView: View {
         } else if showingOnboarding {
             height = 480
         } else if case .overview = tabState.selectedTab {
-            height = min(500, CGFloat(200 + enabledCount * 80))
+            height = min(520, CGFloat(240 + enabledCount * 80))
         } else {
-            height = 400
+            height = 420
         }
 
-        height = min(max(height, 300), 600)
+        height = min(max(height, 300), 550)
 
         withAnimation(.easeInOut(duration: 0.2)) {
             popoverWidth = width
