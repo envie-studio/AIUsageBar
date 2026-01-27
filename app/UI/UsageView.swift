@@ -18,7 +18,7 @@ struct MultiProviderUsageView: View {
             } else {
                 TabBar(
                     tabState: tabState,
-                    providers: Array(usageManager.providers.values).filter { AppSettings.shared.isProviderEnabled($0.id) },
+                    providers: Array(usageManager.providers.values).filter { $0.isAuthenticated && AppSettings.shared.isProviderEnabled($0.id) },
                     snapshots: usageManager.snapshots
                 )
             }

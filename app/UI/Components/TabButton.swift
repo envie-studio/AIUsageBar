@@ -48,13 +48,6 @@ struct TabButton: View {
                             lineWidth: 1
                         )
                 )
-                
-                if isSelected {
-                    Rectangle()
-                        .fill(Color(NSColor.controlAccentColor))
-                        .frame(height: 2)
-                        .frame(maxWidth: .infinity)
-                }
             }
             .frame(height: 44)
         }
@@ -86,6 +79,7 @@ struct PercentageBadge: View {
             .padding(.vertical, 2)
             .background(badgeColor)
             .cornerRadius(4)
+            .fixedSize()
     }
     
     private var badgeColor: Color {

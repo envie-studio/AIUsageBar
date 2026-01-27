@@ -9,38 +9,35 @@ struct TabBar: View {
     private let maxVisibleTabs = 99
     
     var body: some View {
-        HStack(spacing: 0) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    TabButton(
-                        icon: "square.grid.2x2",
-                        title: "Overview",
-                        isSelected: tabState.selectedTab.isOverview,
-                        action: { tabState.selectOverview() }
-                    )
-                    
-                    ForEach(visibleProviders, id: \.id) { provider in
-                        TabButton(
-                            icon: provider.displayConfig.iconName,
-                            title: provider.displayConfig.shortName,
-                            isSelected: tabState.selectedTab.providerId == provider.id,
-                            percentage: snapshotPercentage(for: provider.id),
-                            color: Color(hex: provider.displayConfig.primaryColor),
-                            action: { tabState.selectProvider(provider.id) }
-                        )
-                    }
-                    
-                    if hasMoreProviders {
-                        MoreButton(
-                            hiddenProviders: hiddenProviders,
-                            tabState: tabState
-                        )
-                    }
-                }
-                .padding(.horizontal, 8)
-            }
+        HStack(spacing: 4) {
+            TabButton(
+                icon: "square.grid.2x2",
+                title: "Overview",
+                isSelected: tabState.selectedTab.isOverview,
+                action: { tabState.selectOverview() }
+            )
             .frame(maxWidth: .infinity)
+
+            ForEach(visibleProviders, id: \.id) { provider in
+                TabButton(
+                    icon: provider.displayConfig.iconName,
+                    title: provider.displayConfig.shortName,
+                    isSelected: tabState.selectedTab.providerId == provider.id,
+                    percentage: snapshotPercentage(for: provider.id),
+                    color: Color(hex: provider.displayConfig.primaryColor),
+                    action: { tabState.selectProvider(provider.id) }
+                )
+                .frame(maxWidth: .infinity)
+            }
+
+            if hasMoreProviders {
+                MoreButton(
+                    hiddenProviders: hiddenProviders,
+                    tabState: tabState
+                )
+            }
         }
+        .padding(.horizontal, 8)
         .frame(height: 44)
         .background(Color(NSColor.controlBackgroundColor))
         .overlay(
