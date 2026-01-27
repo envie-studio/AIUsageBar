@@ -8,10 +8,8 @@ struct OverviewTabView: View {
     var body: some View {
         VStack(spacing: 16) {
             if hasEnabledProviders {
-                statusBanner
-                
                 providerGrid
-                
+
                 quickStats
             } else {
                 emptyState
@@ -33,83 +31,7 @@ struct OverviewTabView: View {
                 return snap1 > snap2
             }
     }
-    
-    private var statusBanner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: statusIcon)
-                .font(.title3)
-                .foregroundColor(statusColor)
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(statusTitle)
-                    .font(.subheadline)
-                    .fontWeight(.semibold)
-                Text(statusMessage)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-        }
-        .padding(12)
-        .background(statusColor.opacity(0.1))
-        .cornerRadius(8)
-    }
-    
-    private var statusIcon: String {
-        if hasHighUsage {
-            return "exclamationmark.triangle.fill"
-        } else if hasErrors {
-            return "xmark.circle.fill"
-        } else {
-            return "checkmark.circle.fill"
-        }
-    }
-    
-    private var statusColor: Color {
-        if hasHighUsage {
-            return .orange
-        } else if hasErrors {
-            return .red
-        } else {
-            return .green
-        }
-    }
-    
-    private var statusTitle: String {
-        if hasHighUsage {
-            return "High Usage"
-        } else if hasErrors {
-            return "Attention Needed"
-        } else {
-            return "All Systems Good"
-        }
-    }
-    
-    private var statusMessage: String {
-        if hasHighUsage {
-            return "One or more providers are above 80% usage"
-        } else if hasErrors {
-            return "Some providers need attention"
-        } else {
-            return "\(enabledProviders.count) provider\(enabledProviders.count == 1 ? "" : "s") connected"
-        }
-    }
-    
-    private var hasHighUsage: Bool {
-        return enabledProviders.contains { provider in
-            guard let snapshot = usageManager.snapshots[provider.id] else { return false }
-            return snapshot.maxUsagePercentage >= 80
-        }
-    }
-    
-    private var hasErrors: Bool {
-        return usageManager.providers.values.contains { provider in
-            if case .failed = provider.authState { return true }
-            return false
-        }
-    }
-    
+
     private var providerGrid: some View {
         VStack(spacing: 12) {
             ForEach(enabledProviders, id: \.id) { provider in

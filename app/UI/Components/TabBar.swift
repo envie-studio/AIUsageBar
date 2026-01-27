@@ -6,7 +6,7 @@ struct TabBar: View {
     let providers: [UsageProvider]
     let snapshots: [String: UsageSnapshot]
     
-    private let maxVisibleTabs = 4
+    private let maxVisibleTabs = 99
     
     var body: some View {
         HStack(spacing: 0) {

@@ -245,7 +245,7 @@ struct MultiProviderUsageView: View {
             .filter { $0.isAuthenticated && AppSettings.shared.isProviderEnabled($0.id) }
             .count
 
-        if enabledCount >= 4 {
+        if enabledCount >= 3 {
             width = 420
         } else if enabledCount >= 6 {
             width = 460
