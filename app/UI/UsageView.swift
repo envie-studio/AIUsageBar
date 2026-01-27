@@ -8,6 +8,7 @@ struct MultiProviderUsageView: View {
     @ObservedObject var tabState = TabState.shared
     @State private var showingSettings: Bool = false
     @State private var showingOnboarding: Bool = false
+    @State private var selectedProviderIdForConfig: String? = nil
     @State private var popoverHeight: CGFloat = 500
     @State private var popoverWidth: CGFloat = 380
 
@@ -66,6 +67,14 @@ struct MultiProviderUsageView: View {
         .onChange(of: showingSettings) { _ in
             updatePopoverSize()
         }
+        .sheet(item: Binding(
+            get: { selectedProviderIdForConfig.map { ProviderConfigSheetItem(providerId: $0) } },
+            set: { selectedProviderIdForConfig = $0?.providerId }
+        )) { item in
+            if let provider = usageManager.providers[item.providerId] {
+                ProviderConfigModal(provider: provider, usageManager: usageManager)
+            }
+        }
     }
 
     private var headerWithSettingsTitle: some View {
@@ -101,7 +110,7 @@ struct MultiProviderUsageView: View {
                 ProviderDetailTabView(
                     provider: provider,
                     snapshot: usageManager.snapshots[providerId],
-                    onConfigure: { showingSettings = true }
+                    onConfigure: { selectedProviderIdForConfig = providerId }
                 )
             }
         }
@@ -437,6 +446,12 @@ struct LegacyCookieInputView: View {
 
 // Type alias for backwards compatibility
 typealias UsageView = MultiProviderUsageView
+
+/// Helper struct for sheet presentation
+struct ProviderConfigSheetItem: Identifiable {
+    let id = UUID()
+    let providerId: String
+}
 
 /// Banner displayed when a new version is available
 struct UpdateBannerView: View {
