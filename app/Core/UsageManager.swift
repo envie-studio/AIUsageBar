@@ -99,6 +99,14 @@ class MultiProviderUsageManager: ObservableObject {
                 self?.updateStatusBar()
             }
             .store(in: &cancellables)
+
+        // Subscribe to preferred quota changes to update status bar
+        settings.$preferredQuotaIds
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateStatusBar()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public Methods
@@ -275,10 +283,16 @@ class MultiProviderUsageManager: ObservableObject {
         var providerInfos: [(shortName: String, percentage: Int)] = []
 
         for provider in providers.values {
-            if provider.isAuthenticated && 
-               settings.isProviderEnabled(provider.id), 
+            if provider.isAuthenticated &&
+               settings.isProviderEnabled(provider.id),
                let snapshot = snapshots[provider.id] {
-                let percentage = Int(snapshot.maxUsagePercentage)
+                let preferredId = settings.getPreferredQuotaId(for: provider.id)
+                let percentage: Int
+                if let quota = snapshot.preferredQuota(quotaId: preferredId) {
+                    percentage = Int(quota.computedPercentage)
+                } else {
+                    percentage = Int(snapshot.maxUsagePercentage)
+                }
                 providerInfos.append((provider.displayConfig.shortName, percentage))
             }
         }

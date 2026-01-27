@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Compact provider card for overview tab
 struct CompactProviderCard: View {
+    @ObservedObject private var appSettings = AppSettings.shared
     let provider: UsageProvider
     let snapshot: UsageSnapshot?
     let onTap: () -> Void
@@ -30,20 +31,20 @@ struct CompactProviderCard: View {
                     statusIndicator
                 }
                 
-                if let snapshot = snapshot, let primaryQuota = snapshot.primaryQuota {
+                if snapshot != nil, let displayQuota = preferredQuota {
                     VStack(alignment: .leading, spacing: 4) {
-                        ProgressView(value: min(primaryQuota.computedPercentage / 100, 1.0))
+                        ProgressView(value: min(displayQuota.computedPercentage / 100, 1.0))
                             .tint(progressColor)
                             .scaleEffect(x: 1, y: 1.5, anchor: .center)
                         
                         HStack {
-                            Text("\(Int(primaryQuota.computedPercentage))% used")
+                            Text("\(Int(displayQuota.computedPercentage))% used")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
-                            
+
                             Spacer()
-                            
-                            if let resetTime = primaryQuota.resetDate {
+
+                            if let resetTime = displayQuota.resetDate {
                                 Text("Resets \(formatResetTime(resetTime))")
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
@@ -84,8 +85,14 @@ struct CompactProviderCard: View {
         }
     }
     
+    private var preferredQuota: QuotaMetric? {
+        guard let snapshot = snapshot else { return nil }
+        let preferredId = AppSettings.shared.getPreferredQuotaId(for: provider.id)
+        return snapshot.preferredQuota(quotaId: preferredId)
+    }
+
     private var primaryPercentage: Double? {
-        return snapshot?.primaryQuota?.computedPercentage
+        return preferredQuota?.computedPercentage
     }
     
     private var progressColor: Color {

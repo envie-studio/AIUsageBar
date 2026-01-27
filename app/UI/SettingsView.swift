@@ -217,9 +217,12 @@ struct ProviderSettingsCard: View {
     }
 
     private var primaryPercentage: Int? {
-        guard let snapshot = snapshot,
-              let primaryQuota = snapshot.primaryQuota else { return nil }
-        return Int(primaryQuota.computedPercentage)
+        guard let snapshot = snapshot else { return nil }
+        let preferredId = AppSettings.shared.getPreferredQuotaId(for: provider.id)
+        if let quota = snapshot.preferredQuota(quotaId: preferredId) {
+            return Int(quota.computedPercentage)
+        }
+        return Int(snapshot.maxUsagePercentage)
     }
 
     var body: some View {
@@ -318,6 +321,7 @@ struct ProviderConfigModal: View {
     @State private var isError: Bool = false
     @State private var hasExistingCredentials: Bool = false
     @State private var isEnabled: Bool = true
+    @State private var selectedQuotaId: String = "session"
 
     private var inputLabel: String {
         switch provider.authMethod {
@@ -407,6 +411,31 @@ struct ProviderConfigModal: View {
                         .controlSize(.small)
                         .onChange(of: isEnabled) { newValue in
                             AppSettings.shared.setProviderEnabled(provider.id, enabled: newValue)
+                        }
+
+                        // Claude-specific: quota display preference
+                        if provider.id == "claude" {
+                            VStack(alignment: .leading, spacing: 8) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Show in tab/overview")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                    Text("Which quota to display in the tab badge and overview card")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Picker("", selection: $selectedQuotaId) {
+                                    Text("Session (5 hour)").tag("session")
+                                    Text("Weekly (7 day)").tag("weekly")
+                                    Text("Auto (highest)").tag("auto")
+                                }
+                                .pickerStyle(.segmented)
+                                .labelsHidden()
+                                .onChange(of: selectedQuotaId) { newValue in
+                                    AppSettings.shared.setPreferredQuotaId(newValue, for: provider.id)
+                                }
+                            }
                         }
                     }
 
@@ -502,6 +531,28 @@ struct ProviderConfigModal: View {
                                     .font(.caption)
                                     .foregroundColor(isError ? .red : .green)
                             }
+
+                            // Credential action buttons
+                            HStack(spacing: 8) {
+                                Button("Save") {
+                                    saveCredentialsOnly()
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .disabled(credentialInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || credentialInput.hasSuffix("...") || credentialInput.contains("•"))
+
+                                Button("Test Connection") {
+                                    testConnection()
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                                .disabled(!hasExistingCredentials && (credentialInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || credentialInput.hasSuffix("...") || credentialInput.contains("•")))
+
+                                if isConfiguring {
+                                    ProgressView()
+                                        .scaleEffect(0.7)
+                                }
+                            }
                         }
                     }
                 }
@@ -520,26 +571,11 @@ struct ProviderConfigModal: View {
 
                 Spacer()
 
-                if isConfiguring {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                        .padding(.trailing, 8)
-                }
-
                 Button("Cancel") {
                     dismiss()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-
-                if provider.authMethod != .none {
-                    Button("Save & Test") {
-                        saveCredentials()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    .disabled(isConfiguring || credentialInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
             }
             .padding()
             .background(Color.secondary.opacity(0.05))
@@ -548,6 +584,7 @@ struct ProviderConfigModal: View {
         .onAppear {
             loadExistingCredentials()
             isEnabled = AppSettings.shared.isProviderEnabled(provider.id)
+            selectedQuotaId = AppSettings.shared.getPreferredQuotaId(for: provider.id) ?? "session"
         }
     }
 
@@ -603,7 +640,20 @@ struct ProviderConfigModal: View {
         }
     }
 
-    private func saveCredentials() {
+    private func buildCredentials(from value: String) -> ProviderCredentials {
+        switch provider.authMethod {
+        case .cookie:
+            return ProviderCredentials(providerId: provider.id, cookie: value)
+        case .apiKey:
+            return ProviderCredentials(providerId: provider.id, apiKey: value)
+        case .bearerToken:
+            return ProviderCredentials(providerId: provider.id, bearerToken: value)
+        case .none:
+            return ProviderCredentials(providerId: provider.id)
+        }
+    }
+
+    private func saveCredentialsOnly() {
         let value = credentialInput.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !value.isEmpty else {
@@ -619,32 +669,63 @@ struct ProviderConfigModal: View {
             return
         }
 
+        let credentials = buildCredentials(from: value)
+        do {
+            try CredentialManager.shared.save(credentials)
+            statusMessage = "Credentials saved"
+            isError = false
+            hasExistingCredentials = true
+        } catch {
+            statusMessage = "Failed to save: \(error.localizedDescription)"
+            isError = true
+        }
+    }
+
+    private func testConnection() {
+        let value = credentialInput.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // If there's new input, save it first
+        let hasNewInput = !value.isEmpty && !value.hasSuffix("...") && !value.contains("•")
+        if hasNewInput {
+            let credentials = buildCredentials(from: value)
+            do {
+                try CredentialManager.shared.save(credentials)
+                hasExistingCredentials = true
+            } catch {
+                statusMessage = "Failed to save: \(error.localizedDescription)"
+                isError = true
+                return
+            }
+        }
+
+        // Must have saved credentials to test
+        guard hasExistingCredentials else {
+            statusMessage = "No credentials to test"
+            isError = true
+            return
+        }
+
         isConfiguring = true
         statusMessage = nil
         isError = false
-        hasExistingCredentials = false
-
-        // Build credentials based on auth method
-        var credentials = ProviderCredentials(providerId: provider.id)
-        switch provider.authMethod {
-        case .cookie:
-            credentials = ProviderCredentials(providerId: provider.id, cookie: value)
-        case .apiKey:
-            credentials = ProviderCredentials(providerId: provider.id, apiKey: value)
-        case .bearerToken:
-            credentials = ProviderCredentials(providerId: provider.id, bearerToken: value)
-        case .none:
-            break
-        }
 
         Task {
             do {
+                // Load saved credentials and configure provider
+                guard let credentials = CredentialManager.shared.load(for: provider.id) else {
+                    await MainActor.run {
+                        isConfiguring = false
+                        statusMessage = "No saved credentials found"
+                        isError = true
+                    }
+                    return
+                }
+
                 try await provider.configure(credentials: credentials)
                 await MainActor.run {
                     isConfiguring = false
                     statusMessage = "Connected successfully!"
                     isError = false
-                    hasExistingCredentials = true
                     usageManager.fetchUsage()
                 }
             } catch {

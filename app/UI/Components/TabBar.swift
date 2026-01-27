@@ -3,6 +3,7 @@ import SwiftUI
 /// Horizontal tab bar with provider icons and overview
 struct TabBar: View {
     @ObservedObject var tabState: TabState
+    @ObservedObject private var appSettings = AppSettings.shared
     let providers: [UsageProvider]
     let snapshots: [String: UsageSnapshot]
     
@@ -70,6 +71,10 @@ struct TabBar: View {
     
     private func snapshotPercentage(for providerId: String) -> Int? {
         guard let snapshot = snapshots[providerId] else { return nil }
+        let preferredId = AppSettings.shared.getPreferredQuotaId(for: providerId)
+        if let quota = snapshot.preferredQuota(quotaId: preferredId) {
+            return Int(quota.computedPercentage)
+        }
         return Int(snapshot.maxUsagePercentage)
     }
 }
