@@ -152,4 +152,10 @@ struct ProviderDisplayConfig {
         iconName: "chevron.left.forwardslash.chevron.right",
         shortName: "Codex"
     )
+
+    static let cursor = ProviderDisplayConfig(
+        primaryColor: "#00B4D8",  // Cursor teal/cyan
+        iconName: "cursorarrow.rays",
+        shortName: "Cursor"
+    )
 }
