@@ -11,7 +11,7 @@ class UpdateChecker: ObservableObject {
     @Published var dismissed: Bool = false
     @Published var isUpToDate: Bool = false
 
-    private let githubRepo = "miguelgbandeira/AIUsageBar"
+    private let githubRepo = "envie-studio/AIUsageBar"
     private let lastCheckKey = "last_update_check"
     private let checkIntervalSeconds: TimeInterval = 86400 // 24 hours
 
