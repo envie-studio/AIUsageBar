@@ -26,6 +26,12 @@ struct MultiProviderUsageView: View {
 
             Divider()
 
+            if updateChecker.updateAvailable && !updateChecker.dismissed {
+                UpdateBannerView(updateChecker: updateChecker)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+            }
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if showingSettings {
