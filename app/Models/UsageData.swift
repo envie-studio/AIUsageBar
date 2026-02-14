@@ -78,6 +78,18 @@ struct UsageSnapshot {
     var maxUsagePercentage: Double {
         quotas.map { $0.computedPercentage }.max() ?? 0
     }
+
+    /// Returns the preferred quota based on user preference
+    /// - Parameter quotaId: The preferred quota ID, or nil/"auto" for highest percentage
+    /// - Returns: The matching quota, or primaryQuota as fallback
+    func preferredQuota(quotaId: String?) -> QuotaMetric? {
+        // If nil or "auto", return highest (current behavior)
+        guard let id = quotaId, id != "auto" else {
+            return primaryQuota
+        }
+        // Find matching quota, fallback to primary
+        return quotas.first { $0.id == id } ?? primaryQuota
+    }
 }
 
 /// Provider authentication state
@@ -151,5 +163,17 @@ struct ProviderDisplayConfig {
         primaryColor: "#10A37F",  // OpenAI green
         iconName: "chevron.left.forwardslash.chevron.right",
         shortName: "Codex"
+    )
+
+    static let cursor = ProviderDisplayConfig(
+        primaryColor: "#00B4D8",  // Cursor teal/cyan
+        iconName: "cursorarrow.rays",
+        shortName: "Cursor"
+    )
+
+    static let kimiK2 = ProviderDisplayConfig(
+        primaryColor: "#4C00FF",  // Kimi purple
+        iconName: "sparkle",
+        shortName: "Kimi K2"
     )
 }

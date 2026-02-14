@@ -67,15 +67,21 @@ class MultiProviderUsageManager: ObservableObject {
         let claude = ClaudeWebProvider()
         let zhipu = ZhipuWebProvider()
         let codex = CodexProvider()
+        let cursor = CursorProvider()
+        let kimiK2 = KimiK2Provider()
 
         providers[claude.id] = claude
         providers[zhipu.id] = zhipu
         providers[codex.id] = codex
+        providers[cursor.id] = cursor
+        providers[kimiK2.id] = kimiK2
 
         // Register with global registry
         ProviderRegistry.shared.register(claude)
         ProviderRegistry.shared.register(zhipu)
         ProviderRegistry.shared.register(codex)
+        ProviderRegistry.shared.register(cursor)
+        ProviderRegistry.shared.register(kimiK2)
     }
 
     private func setupSubscriptions() {
@@ -91,6 +97,22 @@ class MultiProviderUsageManager: ObservableObject {
                 }
                 .store(in: &cancellables)
         }
+
+        // Subscribe to settings changes to update status bar when providers are enabled/disabled
+        settings.$enabledProviderIds
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateStatusBar()
+            }
+            .store(in: &cancellables)
+
+        // Subscribe to preferred quota changes to update status bar
+        settings.$preferredQuotaIds
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateStatusBar()
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Public Methods
@@ -267,10 +289,16 @@ class MultiProviderUsageManager: ObservableObject {
         var providerInfos: [(shortName: String, percentage: Int)] = []
 
         for provider in providers.values {
-            if provider.isAuthenticated && 
-               settings.isProviderEnabled(provider.id), 
+            if provider.isAuthenticated &&
+               settings.isProviderEnabled(provider.id),
                let snapshot = snapshots[provider.id] {
-                let percentage = Int(snapshot.maxUsagePercentage)
+                let preferredId = settings.getPreferredQuotaId(for: provider.id)
+                let percentage: Int
+                if let quota = snapshot.preferredQuota(quotaId: preferredId) {
+                    percentage = Int(quota.computedPercentage)
+                } else {
+                    percentage = Int(snapshot.maxUsagePercentage)
+                }
                 providerInfos.append((provider.displayConfig.shortName, percentage))
             }
         }

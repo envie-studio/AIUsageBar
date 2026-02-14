@@ -1,208 +1,281 @@
 import SwiftUI
 import AppKit
 
-/// Main usage display view with multi-provider support
+/// Main usage display view with tab-based navigation
 struct MultiProviderUsageView: View {
     @ObservedObject var usageManager: MultiProviderUsageManager
     @ObservedObject var updateChecker: UpdateChecker = UpdateChecker.shared
+    @ObservedObject var tabState = TabState.shared
     @State private var showingSettings: Bool = false
+    @State private var showingOnboarding: Bool = false
+    @State private var selectedProviderIdForConfig: String? = nil
+    @State private var popoverHeight: CGFloat = 500
+    @State private var popoverWidth: CGFloat = 380
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Update banner
-                if updateChecker.updateAvailable && !updateChecker.dismissed {
-                    UpdateBannerView(updateChecker: updateChecker)
-                }
-
-                // Header
-                HStack {
-                    Text("AI Usage")
-                        .font(.headline)
-
-                    Spacer()
-
-                    if usageManager.isLoading {
-                        ProgressView()
-                            .scaleEffect(0.7)
-                    }
-                }
-                .padding(.bottom, 4)
-
-            // Error message
-            if let error = usageManager.errorMessage {
-                Text(error)
-                    .font(.caption)
-                    .foregroundColor(.orange)
-                    .padding(.bottom, 8)
+        VStack(spacing: 0) {
+            if showingSettings {
+                headerWithSettingsTitle
+            } else {
+                TabBar(
+                    tabState: tabState,
+                    providers: Array(usageManager.providers.values).filter { $0.isAuthenticated && AppSettings.shared.isProviderEnabled($0.id) },
+                    snapshots: usageManager.snapshots
+                )
             }
 
-            // Welcome message if no data
-            if !usageManager.hasFetchedData {
-                VStack(alignment: .leading, spacing: 12) {
-                    // Welcome header
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Welcome to AI Usage Bar")
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        Text("Track your AI usage across multiple providers in one place.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+            Divider()
 
-                    // Quick start guide
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Get Started")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("1.")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                            Text("Click **Settings** below")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    if showingSettings {
+                        VStack(alignment: .leading, spacing: 16) {
+                            settingsView
                         }
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("2.")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                            Text("Click on a provider to configure it")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    } else if showingOnboarding {
+                        VStack(alignment: .leading, spacing: 16) {
+                            onboardingView
                         }
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("3.")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundColor(.secondary)
-                            Text("Follow the instructions to add your credentials")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                    } else {
+                        VStack(alignment: .leading, spacing: 16) {
+                            tabContent
                         }
                     }
-
-                    // Supported providers with visual cards
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Supported Providers")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-
-                        HStack(spacing: 8) {
-                            ForEach(Array(usageManager.providers.values), id: \.id) { provider in
-                                HStack(spacing: 4) {
-                                    Image(systemName: provider.displayConfig.iconName)
-                                        .font(.system(size: 10))
-                                    Text(provider.displayConfig.shortName)
-                                        .font(.caption2)
-                                }
-                                .foregroundColor(Color(hex: provider.displayConfig.primaryColor))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color(hex: provider.displayConfig.primaryColor).opacity(0.1))
-                                .cornerRadius(4)
-                            }
-                        }
-                    }
-
-                    // Recommendation
-                    HStack(spacing: 6) {
-                        Image(systemName: "lightbulb.fill")
-                            .font(.caption)
-                            .foregroundColor(.yellow)
-                        Text("Tip: Start with Claude if you have a Pro subscription")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(8)
-                    .background(Color.yellow.opacity(0.1))
-                    .cornerRadius(6)
                 }
-                .padding(12)
-                .background(Color.secondary.opacity(0.05))
-                .cornerRadius(8)
+                .padding()
             }
+            .frame(maxHeight: popoverHeight - 88)
+            .animation(.easeInOut(duration: 0.15), value: tabState.selectedTab)
+            .animation(.easeInOut(duration: 0.15), value: showingSettings)
+            .animation(.easeInOut(duration: 0.15), value: showingOnboarding)
 
-            // Provider cards
-            if usageManager.hasFetchedData {
-                ScrollView {
-                    VStack(spacing: 12) {
-                        ForEach(Array(usageManager.providers.values), id: \.id) { provider in
-                            if provider.isAuthenticated && AppSettings.shared.isProviderEnabled(provider.id) {
-                                ProviderCardView(
-                                    provider: provider,
-                                    snapshot: usageManager.snapshot(for: provider.id)
-                                )
-                            }
-                        }
-                    }
-                }
-                .frame(maxHeight: 300)
-
+            if !showingSettings {
                 Divider()
 
-                // Last updated and refresh
-                HStack {
-                    Text("Last updated: \(formatTime(usageManager.lastUpdated))")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                footer
+            }
+        }
+        .frame(width: popoverWidth, height: popoverHeight)
+        .background(Color(NSColor.windowBackgroundColor))
+        .onAppear {
+            updatePopoverSize()
+            showingOnboarding = !hasConfiguredProviders
+        }
+        .onChange(of: tabState.selectedTab) { _ in
+            updatePopoverSize()
+        }
+        .onChange(of: showingSettings) { _ in
+            updatePopoverSize()
+        }
+        .sheet(item: Binding(
+            get: { selectedProviderIdForConfig.map { ProviderConfigSheetItem(providerId: $0) } },
+            set: { selectedProviderIdForConfig = $0?.providerId }
+        )) { item in
+            if let provider = usageManager.providers[item.providerId] {
+                ProviderConfigModal(provider: provider, usageManager: usageManager)
+            }
+        }
+    }
 
-                    Spacer()
+    private var headerWithSettingsTitle: some View {
+        HStack(spacing: 12) {
+            Text("Settings")
+                .font(.headline)
+                .fontWeight(.semibold)
 
-                    Button("Refresh") {
-                        usageManager.fetchUsage()
-                    }
-                    .buttonStyle(.borderless)
+            Spacer()
+
+            Button("Back to Overview") {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    showingSettings = false
+                }
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    @ViewBuilder
+    private var tabContent: some View {
+        switch tabState.selectedTab {
+        case .overview:
+            OverviewTabView(usageManager: usageManager) { providerId in
+                tabState.selectProvider(providerId)
+            }
+        case .provider(let providerId):
+            if let provider = usageManager.providers[providerId] {
+                ProviderDetailTabView(
+                    provider: provider,
+                    snapshot: usageManager.snapshots[providerId],
+                    onConfigure: { selectedProviderIdForConfig = providerId }
+                )
+            }
+        }
+    }
+
+    private var onboardingView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Welcome to AI Usage Bar")
+                .font(.headline)
+                .fontWeight(.semibold)
+
+            Text("Track your AI usage across multiple providers in one place.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Get Started")
                     .font(.caption)
+                    .fontWeight(.semibold)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("1.")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                        Text("Click **Settings** below")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("2.")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                        Text("Click on a provider to configure it")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    HStack(alignment: .top, spacing: 8) {
+                        Text("3.")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(.secondary)
+                        Text("Follow the instructions to add your credentials")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
 
-            // Settings
-            Button(showingSettings ? "Hide Settings" : "Settings") {
-                showingSettings.toggle()
-            }
-            .buttonStyle(.borderless)
-            .font(.caption)
+            Divider()
 
-            if showingSettings {
-                SettingsView(usageManager: usageManager)
-            }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Supported Providers")
+                    .font(.caption)
+                    .fontWeight(.semibold)
 
-            // Support link
-            Button(action: {
-                NSWorkspace.shared.open(URL(string: "https://donate.stripe.com/3cIcN5b5H7Q8ay8bIDfIs02")!)
-            }) {
-                HStack(spacing: 4) {
-                    Text("Buy the original Dev a Coffee")
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 8) {
+                    ForEach(Array(usageManager.providers.values), id: \.id) { provider in
+                        HStack(spacing: 6) {
+                            Image(systemName: provider.displayConfig.iconName)
+                                .font(.system(size: 11))
+                            Text(provider.displayConfig.shortName)
+                                .font(.caption2)
+                        }
+                        .foregroundColor(Color(hex: provider.displayConfig.primaryColor))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color(hex: provider.displayConfig.primaryColor).opacity(0.1))
+                        .cornerRadius(6)
+                    }
                 }
             }
-            .buttonStyle(.borderless)
-            .font(.caption)
-            .foregroundColor(.orange)
 
-            // Check for Updates
+            HStack(spacing: 6) {
+                Image(systemName: "lightbulb.fill")
+                    .font(.caption)
+                    .foregroundColor(.yellow)
+                Text("Tip: Start with Claude if you have a Pro subscription")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(8)
+            .background(Color.yellow.opacity(0.1))
+            .cornerRadius(6)
+        }
+    }
+
+    private var settingsView: some View {
+        SettingsView(usageManager: usageManager)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 16) {
             HStack(spacing: 8) {
-                Button("Check for Updates") {
-                    updateChecker.checkForUpdates(force: true)
+                if usageManager.isLoading {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                }
+
+                Text("Updated: \(formatTime(usageManager.lastUpdated))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Spacer()
+
+            HStack(spacing: 8) {
+                Button(showingSettings ? "Done" : "Settings") {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        showingSettings.toggle()
+                    }
                 }
                 .buttonStyle(.borderless)
                 .font(.caption)
 
-                if updateChecker.isUpToDate {
-                    Text("Already up to date!")
-                        .font(.caption)
-                        .foregroundColor(.green)
+                Button("Refresh") {
+                    usageManager.fetchUsage()
                 }
+                .buttonStyle(.borderless)
+                .font(.caption)
+                .disabled(usageManager.isLoading)
             }
         }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    private var hasConfiguredProviders: Bool {
+        return usageManager.providers.values.contains { $0.isAuthenticated }
+    }
+
+    private func updatePopoverSize() {
+        let enabledCount = usageManager.providers.values
+            .filter { $0.isAuthenticated && AppSettings.shared.isProviderEnabled($0.id) }
+            .count
+
+        // Dynamic width based on tab count
+        // Each tab needs approximately 75pt (icon + name + badge + padding)
+        let tabCount = enabledCount + 1  // +1 for Overview tab
+        let minWidth: CGFloat = 380
+        let perTabWidth: CGFloat = 75
+        let calculatedWidth = minWidth + CGFloat(max(0, tabCount - 2)) * perTabWidth
+        let width = min(calculatedWidth, 550)  // Cap at reasonable max
+
+        var height: CGFloat = 300
+
+        if showingSettings {
+            height = 500
+        } else if showingOnboarding {
+            height = 480
+        } else if case .overview = tabState.selectedTab {
+            height = min(560, CGFloat(280 + enabledCount * 80))
+        } else {
+            height = 420
         }
-        .padding()
-        .frame(width: 380, height: 460)
-        .onAppear {
-            usageManager.updatePercentages()
+        height = min(max(height, 300), 600)
+
+        withAnimation(.easeInOut(duration: 0.2)) {
+            popoverWidth = width
+            popoverHeight = height
         }
     }
 
@@ -372,6 +445,12 @@ struct LegacyCookieInputView: View {
 
 // Type alias for backwards compatibility
 typealias UsageView = MultiProviderUsageView
+
+/// Helper struct for sheet presentation
+struct ProviderConfigSheetItem: Identifiable {
+    let id = UUID()
+    let providerId: String
+}
 
 /// Banner displayed when a new version is available
 struct UpdateBannerView: View {
