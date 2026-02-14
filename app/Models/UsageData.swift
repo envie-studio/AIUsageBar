@@ -158,4 +158,10 @@ struct ProviderDisplayConfig {
         iconName: "cursorarrow.rays",
         shortName: "Cursor"
     )
+
+    static let kimiK2 = ProviderDisplayConfig(
+        primaryColor: "#4C00FF",  // Kimi purple
+        iconName: "sparkle",
+        shortName: "Kimi K2"
+    )
 }

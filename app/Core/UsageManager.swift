@@ -68,17 +68,20 @@ class MultiProviderUsageManager: ObservableObject {
         let zhipu = ZhipuWebProvider()
         let codex = CodexProvider()
         let cursor = CursorProvider()
+        let kimiK2 = KimiK2Provider()
 
         providers[claude.id] = claude
         providers[zhipu.id] = zhipu
         providers[codex.id] = codex
         providers[cursor.id] = cursor
+        providers[kimiK2.id] = kimiK2
 
         // Register with global registry
         ProviderRegistry.shared.register(claude)
         ProviderRegistry.shared.register(zhipu)
         ProviderRegistry.shared.register(codex)
         ProviderRegistry.shared.register(cursor)
+        ProviderRegistry.shared.register(kimiK2)
     }
 
     private func setupSubscriptions() {

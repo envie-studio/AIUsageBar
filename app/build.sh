@@ -40,6 +40,7 @@ SWIFT_FILES=(
     "Core/Providers/ZhipuProvider.swift"
     "Core/Providers/CodexProvider.swift"
     "Core/Providers/CursorProvider.swift"
+    "Core/Providers/KimiK2Provider.swift"
     "Core/UsageManager.swift"
     "Core/UpdateChecker.swift"
     "UI/ProviderCardView.swift"
