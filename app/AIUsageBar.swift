@@ -20,7 +20,7 @@ struct Main {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem!
-    var popover: NSPopover!
+    var panel: NSPanel!
     var usageManager: MultiProviderUsageManager!
     var eventMonitor: Any?
     var hotKeyRef: EventHotKeyRef?
@@ -48,11 +48,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         updateChecker = UpdateChecker.shared
         updateChecker.checkForUpdates()
 
-        // Create popover
-        popover = NSPopover()
-        popover.contentSize = NSSize(width: 380, height: 480)
-        popover.behavior = .transient
-        popover.contentViewController = NSHostingController(rootView: UsageView(usageManager: usageManager, updateChecker: updateChecker))
+        // Create panel
+        let panelWidth: CGFloat = 380
+        let panelHeight: CGFloat = 480
+        
+        panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight),
+                        styleMask: [.borderless, .nonactivatingPanel],
+                        backing: .buffered,
+                        defer: false)
+        panel.level = .statusBar
+        panel.becomesKeyOnlyIfNeeded = false
+        panel.hidesOnDeactivate = true
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.isFloatingPanel = true
+        
+        let hostingView = NSHostingView(rootView: UsageView(usageManager: usageManager, updateChecker: updateChecker))
+        hostingView.frame = NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight)
+        
+        panel.contentView = hostingView
+        panel.contentView?.wantsLayer = true
+        panel.contentView?.layer?.cornerRadius = 10
+        panel.contentView?.layer?.masksToBounds = true
+        panel.contentView?.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        panel.hasShadow = true
 
         // Fetch initial data
         usageManager.fetchUsage()
@@ -143,10 +161,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc func togglePopover() {
-        if popover.isShown {
-            closePopover()
+        if panel.isVisible {
+            closePanel()
         } else {
-            openPopover()
+            openPanel()
         }
     }
 
@@ -168,25 +186,40 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    func openPopover() {
-        if let button = statusItem.button {
-            DispatchQueue.main.async {
-                self.usageManager.updatePercentages()
-            }
-
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-
-            eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-                if self?.popover.isShown == true {
-                    self?.closePopover()
-                }
+    func openPanel() {
+        guard let button = statusItem.button,
+              let buttonWindow = button.window else { return }
+        
+        let buttonFrame = buttonWindow.convertToScreen(button.bounds)
+        
+        let panelWidth: CGFloat = 380
+        let panelHeight: CGFloat = 480
+        let gap: CGFloat = 2
+        
+        var panelOrigin = CGPoint(
+            x: buttonFrame.midX - panelWidth / 2,
+            y: buttonFrame.minY - panelHeight - gap
+        )
+        
+        if let screen = NSScreen.main {
+            let visibleFrame = screen.visibleFrame
+            panelOrigin.x = max(visibleFrame.minX, min(panelOrigin.x, visibleFrame.maxX - panelWidth))
+        }
+        
+        panel.setFrameOrigin(panelOrigin)
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        
+        eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            if self?.panel.isVisible == true {
+                self?.closePanel()
             }
         }
     }
 
-    func closePopover() {
-        popover.performClose(nil)
-
+    func closePanel() {
+        panel.orderOut(nil)
+        
         if let monitor = eventMonitor {
             NSEvent.removeMonitor(monitor)
             eventMonitor = nil

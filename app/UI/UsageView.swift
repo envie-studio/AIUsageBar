@@ -201,9 +201,6 @@ struct MultiProviderUsageView: View {
         }
         .padding()
         .frame(width: 380, height: 460)
-        .onAppear {
-            usageManager.updatePercentages()
-        }
     }
 
     private func formatTime(_ date: Date) -> String {

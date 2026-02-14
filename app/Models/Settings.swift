@@ -74,7 +74,6 @@ class AppSettings: ObservableObject {
         defaults.set(lastNotifiedThresholds, forKey: "last_notified_thresholds")
         defaults.set(refreshIntervalSeconds, forKey: "refresh_interval_seconds")
         defaults.set(showPercentageInMenuBar, forKey: "show_percentage_in_menu_bar")
-        defaults.synchronize()
     }
 
     func getLastNotifiedThreshold(for providerId: String) -> Int {
