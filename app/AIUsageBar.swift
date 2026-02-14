@@ -50,7 +50,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Create panel
         let panelWidth: CGFloat = 380
-        let panelHeight: CGFloat = 480
+        let panelHeight: CGFloat = 500
         
         panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: panelWidth, height: panelHeight),
                         styleMask: [.borderless, .nonactivatingPanel],
@@ -193,7 +193,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let buttonFrame = buttonWindow.convertToScreen(button.bounds)
         
         let panelWidth: CGFloat = 380
-        let panelHeight: CGFloat = 480
+        let panelHeight: CGFloat = 500
         let gap: CGFloat = 2
         
         var panelOrigin = CGPoint(

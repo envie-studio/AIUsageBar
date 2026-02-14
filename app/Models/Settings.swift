@@ -25,6 +25,12 @@ class AppSettings: ObservableObject {
     @Published var showPercentageInMenuBar: Bool {
         didSet { save() }
     }
+    @Published var lastOpenedTab: String {
+        didSet { save() }
+    }
+    @Published var preferredQuotaIds: [String: String] {
+        didSet { save() }
+    }
 
     private let defaults = UserDefaults.standard
 
@@ -35,20 +41,16 @@ class AppSettings: ObservableObject {
         self.primaryProviderId = defaults.string(forKey: "primary_provider_id")
         self.refreshIntervalSeconds = defaults.integer(forKey: "refresh_interval_seconds")
         self.showPercentageInMenuBar = defaults.bool(forKey: "show_percentage_in_menu_bar")
+        self.lastOpenedTab = defaults.string(forKey: "last_opened_tab") ?? "overview"
+
+        // Load preferred quota IDs (default to session for Claude)
+        self.preferredQuotaIds = (defaults.dictionary(forKey: "preferred_quota_ids") as? [String: String]) ?? ["claude": "session"]
 
         // Load enabled providers
-        if let savedIds = defaults.stringArray(forKey: "enabled_provider_ids") {
-            self.enabledProviderIds = Set(savedIds)
-        } else {
-            self.enabledProviderIds = ["claude"]  // Default to Claude enabled
-        }
+        self.enabledProviderIds = defaults.stringArray(forKey: "enabled_provider_ids").map { Set($0) } ?? ["claude"]
 
         // Load notification thresholds
-        if let savedThresholds = defaults.dictionary(forKey: "last_notified_thresholds") as? [String: Int] {
-            self.lastNotifiedThresholds = savedThresholds
-        } else {
-            self.lastNotifiedThresholds = [:]
-        }
+        self.lastNotifiedThresholds = (defaults.dictionary(forKey: "last_notified_thresholds") as? [String: Int]) ?? [:]
 
         // Set defaults if not configured
         if !defaults.bool(forKey: "has_set_notifications") {
@@ -74,6 +76,8 @@ class AppSettings: ObservableObject {
         defaults.set(lastNotifiedThresholds, forKey: "last_notified_thresholds")
         defaults.set(refreshIntervalSeconds, forKey: "refresh_interval_seconds")
         defaults.set(showPercentageInMenuBar, forKey: "show_percentage_in_menu_bar")
+        defaults.set(lastOpenedTab, forKey: "last_opened_tab")
+        defaults.set(preferredQuotaIds, forKey: "preferred_quota_ids")
     }
 
     func getLastNotifiedThreshold(for providerId: String) -> Int {
@@ -94,5 +98,13 @@ class AppSettings: ObservableObject {
         } else {
             enabledProviderIds.remove(providerId)
         }
+    }
+
+    func getPreferredQuotaId(for providerId: String) -> String? {
+        return preferredQuotaIds[providerId]
+    }
+
+    func setPreferredQuotaId(_ quotaId: String?, for providerId: String) {
+        preferredQuotaIds[providerId] = quotaId
     }
 }

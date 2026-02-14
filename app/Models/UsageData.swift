@@ -78,6 +78,18 @@ struct UsageSnapshot {
     var maxUsagePercentage: Double {
         quotas.map { $0.computedPercentage }.max() ?? 0
     }
+
+    /// Returns the preferred quota based on user preference
+    /// - Parameter quotaId: The preferred quota ID, or nil/"auto" for highest percentage
+    /// - Returns: The matching quota, or primaryQuota as fallback
+    func preferredQuota(quotaId: String?) -> QuotaMetric? {
+        // If nil or "auto", return highest (current behavior)
+        guard let id = quotaId, id != "auto" else {
+            return primaryQuota
+        }
+        // Find matching quota, fallback to primary
+        return quotas.first { $0.id == id } ?? primaryQuota
+    }
 }
 
 /// Provider authentication state
