@@ -108,6 +108,12 @@ class CodexProvider: UsageProvider {
             throw ProviderError.notConfigured
         }
 
+        // Lazy token refresh - only fetch when needed
+        if accessToken.isEmpty {
+            NSLog("CodexProvider: Access token empty, fetching fresh token...")
+            accessToken = try await fetchAccessToken()
+        }
+
         guard let url = URL(string: "https://chatgpt.com/backend-api/wham/usage") else {
             throw ProviderError.unknown("Invalid URL")
         }
@@ -142,8 +148,45 @@ class CodexProvider: UsageProvider {
             let responseBody = String(data: data, encoding: .utf8) ?? "Unable to decode"
             print("[CodexProvider] Auth error response: \(responseBody)")
             NSLog("CodexProvider: Auth error response: \(responseBody)")
-            authState = .failed("Session expired")
-            throw ProviderError.invalidCredentials
+            
+            // Try refreshing token once on auth error
+            NSLog("CodexProvider: Attempting token refresh due to auth error...")
+            do {
+                accessToken = try await fetchAccessToken()
+                // Retry the request with fresh token
+                var retryRequest = URLRequest(url: url)
+                retryRequest.httpMethod = "GET"
+                retryRequest.setValue(sessionCookie, forHTTPHeaderField: "Cookie")
+                retryRequest.setValue("*/*", forHTTPHeaderField: "Accept")
+                retryRequest.setValue("https://chatgpt.com", forHTTPHeaderField: "Origin")
+                retryRequest.setValue("https://chatgpt.com/codex", forHTTPHeaderField: "Referer")
+                retryRequest.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", forHTTPHeaderField: "User-Agent")
+                retryRequest.setValue(deviceId, forHTTPHeaderField: "oai-device-id")
+                retryRequest.setValue("en-US", forHTTPHeaderField: "oai-language")
+                retryRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+                
+                let (retryData, retryResponse) = try await URLSession.shared.data(for: retryRequest)
+                guard let retryHttpResponse = retryResponse as? HTTPURLResponse else {
+                    throw ProviderError.unknown("Invalid retry response")
+                }
+                
+                if retryHttpResponse.statusCode == 401 || retryHttpResponse.statusCode == 403 {
+                    authState = .failed("Session expired")
+                    throw ProviderError.invalidCredentials
+                }
+                
+                guard retryHttpResponse.statusCode == 200 else {
+                    throw ProviderError.serverError(retryHttpResponse.statusCode)
+                }
+                
+                let snapshot = try parseUsageData(retryData)
+                latestUsage = snapshot
+                authState = .authenticated
+                return snapshot
+            } catch {
+                authState = .failed("Session expired")
+                throw ProviderError.invalidCredentials
+            }
         }
 
         guard httpResponse.statusCode == 200 else {
@@ -195,20 +238,8 @@ class CodexProvider: UsageProvider {
             }
 
             if !sessionCookie.isEmpty {
-                // Fetch fresh access token on load
-                Task {
-                    do {
-                        accessToken = try await fetchAccessToken()
-                        await MainActor.run {
-                            authState = .authenticated
-                        }
-                        NSLog("CodexProvider: Loaded credentials and refreshed token")
-                    } catch {
-                        await MainActor.run {
-                            authState = .failed("Could not refresh token")
-                        }
-                    }
-                }
+                authState = .authenticated
+                NSLog("CodexProvider: Loaded credentials from Keychain")
             }
         }
     }
