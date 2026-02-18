@@ -176,4 +176,10 @@ struct ProviderDisplayConfig {
         iconName: "sparkle",
         shortName: "Kimi K2"
     )
+
+    static let kimi = ProviderDisplayConfig(
+        primaryColor: "#FF6B35",  // Kimi orange
+        iconName: "bubble.left.and.bubble.right.fill",
+        shortName: "Kimi"
+    )
 }

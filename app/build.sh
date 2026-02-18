@@ -42,6 +42,7 @@ SWIFT_FILES=(
     "Core/Providers/CodexProvider.swift"
     "Core/Providers/CursorProvider.swift"
     "Core/Providers/KimiK2Provider.swift"
+    "Core/Providers/KimiProvider.swift"
     "Core/UsageManager.swift"
     "Core/UpdateChecker.swift"
     "UI/Components/TabButton.swift"
