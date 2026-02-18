@@ -416,25 +416,39 @@ struct ProviderConfigModal: View {
                         // Quota display preference (show if provider has multiple quotas)
                         if let snapshot = usageManager.snapshots[provider.id], snapshot.quotas.count > 1 {
                             VStack(alignment: .leading, spacing: 8) {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Show in menu bar")
+                                HStack {
+                                    Text("Menu bar quota")
                                         .font(.caption)
                                         .fontWeight(.medium)
-                                    Text("Which quota to display in the menu bar and overview")
-                                        .font(.caption2)
-                                        .foregroundColor(.secondary)
-                                }
-
-                                Picker("", selection: $selectedQuotaId) {
-                                    Text("Auto (highest)").tag("auto")
-                                    ForEach(snapshot.quotas) { quota in
-                                        Text(quota.name).tag(quota.id)
+                                    
+                                    Spacer()
+                                    
+                                    Menu {
+                                        Button("Auto (highest)") {
+                                            selectedQuotaId = "auto"
+                                            AppSettings.shared.setPreferredQuotaId(nil, for: provider.id)
+                                        }
+                                        Divider()
+                                        ForEach(snapshot.quotas) { quota in
+                                            Button(quota.name) {
+                                                selectedQuotaId = quota.id
+                                                AppSettings.shared.setPreferredQuotaId(quota.id, for: provider.id)
+                                            }
+                                        }
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Text(displayQuotaName(for: selectedQuotaId, in: snapshot.quotas))
+                                                .font(.caption)
+                                            Image(systemName: "chevron.down")
+                                                .font(.caption2)
+                                        }
+                                        .foregroundColor(.primary)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(Color.secondary.opacity(0.1))
+                                        .cornerRadius(6)
                                     }
-                                }
-                                .pickerStyle(.segmented)
-                                .labelsHidden()
-                                .onChange(of: selectedQuotaId) { newValue in
-                                    AppSettings.shared.setPreferredQuotaId(newValue == "auto" ? nil : newValue, for: provider.id)
+                                    .menuStyle(.borderlessButton)
                                 }
                             }
                         }
@@ -585,7 +599,16 @@ struct ProviderConfigModal: View {
         .onAppear {
             loadExistingCredentials()
             isEnabled = AppSettings.shared.isProviderEnabled(provider.id)
-            selectedQuotaId = AppSettings.shared.getPreferredQuotaId(for: provider.id) ?? "auto"
+            let savedQuotaId = AppSettings.shared.getPreferredQuotaId(for: provider.id) ?? "auto"
+            if savedQuotaId != "auto", let snapshot = usageManager.snapshots[provider.id] {
+                if !snapshot.quotas.contains(where: { $0.id == savedQuotaId }) {
+                    selectedQuotaId = "auto"
+                } else {
+                    selectedQuotaId = savedQuotaId
+                }
+            } else {
+                selectedQuotaId = savedQuotaId
+            }
         }
     }
 
@@ -613,6 +636,16 @@ struct ProviderConfigModal: View {
         case .failed(let message):
             return "Failed: \(message)"
         }
+    }
+
+    private func displayQuotaName(for quotaId: String, in quotas: [QuotaMetric]) -> String {
+        if quotaId == "auto" {
+            return "Auto (highest)"
+        }
+        if let quota = quotas.first(where: { $0.id == quotaId }) {
+            return quota.name
+        }
+        return "Auto (highest)"
     }
 
     private func loadExistingCredentials() {

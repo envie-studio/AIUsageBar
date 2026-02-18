@@ -454,8 +454,13 @@ typealias UsageView = MultiProviderUsageView
 
 /// Helper struct for sheet presentation
 struct ProviderConfigSheetItem: Identifiable {
-    let id = UUID()
+    let id: String  // Uses providerId for stable identity
     let providerId: String
+    
+    init(providerId: String) {
+        self.providerId = providerId
+        self.id = providerId
+    }
 }
 
 /// Banner displayed when a new version is available
