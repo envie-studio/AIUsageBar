@@ -413,27 +413,28 @@ struct ProviderConfigModal: View {
                             AppSettings.shared.setProviderEnabled(provider.id, enabled: newValue)
                         }
 
-                        // Claude-specific: quota display preference
-                        if provider.id == "claude" {
+                        // Quota display preference (show if provider has multiple quotas)
+                        if let snapshot = usageManager.snapshots[provider.id], snapshot.quotas.count > 1 {
                             VStack(alignment: .leading, spacing: 8) {
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Show in tab/overview")
+                                    Text("Show in menu bar")
                                         .font(.caption)
                                         .fontWeight(.medium)
-                                    Text("Which quota to display in the tab badge and overview card")
+                                    Text("Which quota to display in the menu bar and overview")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
 
                                 Picker("", selection: $selectedQuotaId) {
-                                    Text("Session (5 hour)").tag("session")
-                                    Text("Weekly (7 day)").tag("weekly")
                                     Text("Auto (highest)").tag("auto")
+                                    ForEach(snapshot.quotas) { quota in
+                                        Text(quota.name).tag(quota.id)
+                                    }
                                 }
                                 .pickerStyle(.segmented)
                                 .labelsHidden()
                                 .onChange(of: selectedQuotaId) { newValue in
-                                    AppSettings.shared.setPreferredQuotaId(newValue, for: provider.id)
+                                    AppSettings.shared.setPreferredQuotaId(newValue == "auto" ? nil : newValue, for: provider.id)
                                 }
                             }
                         }
@@ -584,7 +585,7 @@ struct ProviderConfigModal: View {
         .onAppear {
             loadExistingCredentials()
             isEnabled = AppSettings.shared.isProviderEnabled(provider.id)
-            selectedQuotaId = AppSettings.shared.getPreferredQuotaId(for: provider.id) ?? "session"
+            selectedQuotaId = AppSettings.shared.getPreferredQuotaId(for: provider.id) ?? "auto"
         }
     }
 

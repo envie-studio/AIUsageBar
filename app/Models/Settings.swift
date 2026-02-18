@@ -43,8 +43,8 @@ class AppSettings: ObservableObject {
         self.showPercentageInMenuBar = defaults.bool(forKey: "show_percentage_in_menu_bar")
         self.lastOpenedTab = defaults.string(forKey: "last_opened_tab") ?? "overview"
 
-        // Load preferred quota IDs (default to session for Claude)
-        self.preferredQuotaIds = (defaults.dictionary(forKey: "preferred_quota_ids") as? [String: String]) ?? ["claude": "session"]
+        // Load preferred quota IDs (nil means auto/highest)
+        self.preferredQuotaIds = (defaults.dictionary(forKey: "preferred_quota_ids") as? [String: String]) ?? [:]
 
         // Load enabled providers
         self.enabledProviderIds = defaults.stringArray(forKey: "enabled_provider_ids").map { Set($0) } ?? ["claude"]
