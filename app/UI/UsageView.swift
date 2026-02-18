@@ -209,7 +209,12 @@ struct MultiProviderUsageView: View {
     }
 
     private var settingsView: some View {
-        SettingsView(usageManager: usageManager)
+        SettingsView(
+            usageManager: usageManager,
+            onConfigureProvider: { providerId in
+                selectedProviderIdForConfig = providerId
+            }
+        )
     }
 
     private var footer: some View {
@@ -258,24 +263,28 @@ struct MultiProviderUsageView: View {
             .filter { $0.isAuthenticated && AppSettings.shared.isProviderEnabled($0.id) }
             .count
 
-        // Dynamic width based on tab count
-        // Each tab needs approximately 75pt (icon + name + badge + padding)
-        let tabCount = enabledCount + 1  // +1 for Overview tab
-        let minWidth: CGFloat = 380
-        let perTabWidth: CGFloat = 75
-        let calculatedWidth = minWidth + CGFloat(max(0, tabCount - 2)) * perTabWidth
-        let width = min(calculatedWidth, 550)  // Cap at reasonable max
-
+        var width: CGFloat = 380
         var height: CGFloat = 300
 
         if showingSettings {
+            // Fixed size for settings
+            width = 380
             height = 500
         } else if showingOnboarding {
+            width = 380
             height = 480
-        } else if case .overview = tabState.selectedTab {
-            height = min(560, CGFloat(280 + enabledCount * 80))
         } else {
-            height = 420
+            // Dynamic width based on tab count (only for tabbed views)
+            let tabCount = enabledCount + 1
+            let perTabWidth: CGFloat = 75
+            let calculatedWidth = width + CGFloat(max(0, tabCount - 2)) * perTabWidth
+            width = min(calculatedWidth, 550)
+
+            if case .overview = tabState.selectedTab {
+                height = min(560, CGFloat(280 + enabledCount * 80))
+            } else {
+                height = 420
+            }
         }
         height = min(max(height, 300), 600)
 
